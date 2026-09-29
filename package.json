@@ -1,0 +1,22 @@
+{
+  "name": "flowdesk",
+  "private": true,
+  "description": "FlowDesk — plateforme SaaS de gestion de projets, de tâches, d'équipes et de ressources.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev -w apps/api",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "npm run build -w apps/api && npm run build -w apps/web",
+    "test": "npm test -w apps/api",
+    "test:e2e": "npm run test:e2e -w apps/api",
+    "db:local": "npm run db:local -w apps/api",
+    "db:migrate": "npm run prisma:migrate -w apps/api",
+    "db:seed": "npm run prisma:seed -w apps/api",
+    "db:setup": "npm run db:setup -w apps/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

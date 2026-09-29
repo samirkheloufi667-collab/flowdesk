@@ -1,0 +1,215 @@
+// FlowDesk — modèle de données
+//
+// Un Workspace est un client du SaaS (une entreprise, une équipe).
+// Tout ce qui appartient à un client — projets, équipes, ressources — porte
+// son workspaceId, et chaque requête de l'API filtre dessus : c'est ce qui
+// empêche un utilisateur de lire les données d'un autre espace, même en
+// connaissant l'identifiant d'une ressource.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Rôles ordonnés : VIEWER < MEMBER < ADMIN < OWNER.
+enum Role {
+  VIEWER
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ResourceType {
+  PERSON
+  EQUIPMENT
+  ROOM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  memberships     Membership[]
+  refreshTokens   RefreshToken[]
+  teamMemberships TeamMember[]
+  assignedTasks   Task[]         @relation("TaskAssignee")
+  createdTasks    Task[]         @relation("TaskCreator")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  members   Membership[]
+  projects  Project[]
+  teams     Team[]
+  resources Resource[]
+}
+
+/// Appartenance d'un utilisateur à un espace, avec son rôle dans cet espace.
+/// Un même utilisateur peut être OWNER d'un espace et VIEWER d'un autre.
+model Membership {
+  id          String   @id @default(cuid())
+  role        Role     @default(MEMBER)
+  userId      String
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+/// Jetons de rafraîchissement. On ne stocke jamais le jeton lui-même, seulement
+/// son empreinte SHA-256 : une fuite de la base ne donne accès à aucune session.
+/// familyId relie les jetons d'une même chaîne de rotation — si un jeton déjà
+/// utilisé revient, toute la famille est révoquée (détection de vol).
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  familyId  String
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#6366f1")
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members   TeamMember[]
+  projects  Project[]
+
+  @@unique([workspaceId, name])
+}
+
+model TeamMember {
+  teamId String
+  userId String
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  color       String        @default("#6366f1")
+  startDate   DateTime?
+  dueDate     DateTime?
+  workspaceId String
+  teamId      String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  tasks       Task[]
+  allocations Allocation[]
+
+  @@index([workspaceId])
+}
+
+/// position est un flottant : insérer une tâche entre deux autres sur le
+/// tableau Kanban revient à prendre la moyenne de leurs positions, sans
+/// renuméroter toute la colonne.
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  position    Float      @default(0)
+  estimate    Int?
+  dueDate     DateTime?
+  projectId   String
+  assigneeId  String?
+  creatorId   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creator  User    @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  @@index([projectId, status, position])
+  @@index([assigneeId])
+}
+
+/// Une ressource a une capacité (heures par semaine pour une personne,
+/// unités pour du matériel ou une salle). Les allocations en réservent une part.
+model Resource {
+  id          String       @id @default(cuid())
+  name        String
+  type        ResourceType
+  capacity    Int
+  unit        String       @default("h/sem")
+  workspaceId String
+  createdAt   DateTime     @default(now())
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  allocations Allocation[]
+
+  @@unique([workspaceId, name])
+}
+
+model Allocation {
+  id         String   @id @default(cuid())
+  amount     Int
+  startDate  DateTime
+  endDate    DateTime
+  resourceId String
+  projectId  String
+  createdAt  DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, startDate, endDate])
+}

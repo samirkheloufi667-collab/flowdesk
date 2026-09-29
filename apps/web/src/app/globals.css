@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+/*
+ * FlowDesk — thème sombre assumé, dans la lignée des composants React Bits.
+ * Un seul accent violet, repris du fond Aurora ; le sarcelle signale ce qui est
+ * terminé, l'ambre ce qui attend, le rose ce qui déborde.
+ */
+@theme {
+  --color-ink: #0a0b10;
+  --color-surface: #11131b;
+  --color-surface-2: #171a24;
+  --color-surface-3: #1e2230;
+  --color-line: #232735;
+  --color-line-strong: #2f3446;
+  --color-fg: #e9ebf2;
+  --color-muted: #8a91a6;
+  --color-faint: #5d6478;
+  --color-accent: #7c6cff;
+  --color-accent-strong: #9a8cff;
+  --color-teal: #3ddbc8;
+  --color-warn: #fbbf24;
+  --color-danger: #fb7185;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SFMono-Regular', monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 45%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
+/* Barres de défilement discrètes, cohérentes avec le fond. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

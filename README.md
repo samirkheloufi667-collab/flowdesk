@@ -7,6 +7,9 @@ surréservation**.
 
 > Projet de portfolio full stack — Next.js · TypeScript · NestJS · PostgreSQL · Prisma · Redis · Docker
 
+> **Démo en ligne : [flowdesk-sn33.onrender.com](https://flowdesk-sn33.onrender.com)** — compte `demo@flowdesk.dev` / `demo1234`.
+> Hébergement gratuit : le premier chargement peut prendre environ une minute ; les données de démonstration sont réinitialisées à chaque redémarrage.
+
 ## Fonctionnalités
 
 | | |

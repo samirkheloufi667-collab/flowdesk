@@ -3,6 +3,7 @@
 import {
   DndContext,
   DragEndEvent,
+  DragMoveEvent,
   DragOverlay,
   DragStartEvent,
   KeyboardSensor,
@@ -14,10 +15,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { Clock, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { dueLabel, PRIORITY_COLOR, PRIORITY_LABEL, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from '@/lib/format';
 import type { Task, TaskStatus } from '@/lib/types';
+import { Flip, gsap, prefersReducedMotion } from './motion/gsap';
 import { Avatar, Badge, cx } from './ui/primitives';
 
 const STEP = 1024;
@@ -46,29 +47,27 @@ export function dropTarget(tasks: Task[], moving: Task, overId: string): { statu
   };
 }
 
-function TaskCard({ task, dragging, highlight }: { task: Task; dragging?: boolean; highlight?: boolean }) {
+/** Fiche d'une tâche : du papier, un filet, pas de coins arrondis. */
+function TaskCard({ task, lifted }: { task: Task; lifted?: boolean }) {
   const due = dueLabel(task.dueDate, task.status === 'DONE');
+  const urgent = task.priority === 'URGENT' && task.status !== 'DONE';
   return (
     <div
       className={cx(
-        'rounded-xl border bg-surface-2 p-3.5 text-left transition-[border-color,box-shadow]',
-        highlight ? 'border-accent shadow-[0_-2px_0_0_var(--color-accent)]' : 'border-line hover:border-line-strong',
-        dragging && 'rotate-[1.5deg] border-accent shadow-2xl shadow-black/60',
+        'relative border bg-[#fbf9f4] px-4 pt-3.5 pb-3 text-left transition-[border-color,transform,box-shadow] duration-300',
+        lifted ? 'border-ink shadow-[6px_8px_0_0_var(--color-ink)]' : 'border-rule hover:-translate-y-0.5 hover:border-ink-2',
+        task.status === 'DONE' && !lifted && 'opacity-70',
       )}
     >
-      <p className="text-sm font-medium leading-snug">{task.title}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      {urgent && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-late" />}
+      <p className={cx('text-[15px] leading-snug', task.status === 'DONE' && 'line-through decoration-rule-strong')}>{task.title}</p>
+      <div className="mt-3 flex items-center gap-3">
         <Badge color={PRIORITY_COLOR[task.priority]}>{PRIORITY_LABEL[task.priority]}</Badge>
         {due && task.status !== 'DONE' && (
-          <span className={cx('text-xs', due.late ? 'font-medium text-danger' : 'text-muted')}>{due.text}</span>
+          <span className={cx('font-mono text-[11px]', due.late ? 'text-late' : 'text-muted')}>{due.text}</span>
         )}
         <span className="ml-auto flex items-center gap-2">
-          {task.estimate != null && (
-            <span className="flex items-center gap-1 font-mono text-[11px] text-faint">
-              <Clock className="size-3" />
-              {task.estimate} h
-            </span>
-          )}
+          {task.estimate != null && <span className="font-mono text-[11px] text-faint">{task.estimate} h</span>}
           {task.assignee && <Avatar name={task.assignee.name} size={22} />}
         </span>
       </div>
@@ -85,55 +84,75 @@ function DraggableTask({ task, disabled, onOpen }: { task: Task; disabled: boole
         drag.setNodeRef(node);
         drop.setNodeRef(node);
       }}
+      data-flip-id={task.id}
       {...drag.listeners}
       {...drag.attributes}
       onClick={() => onOpen(task)}
-      className={cx('touch-manipulation outline-none', drag.isDragging && 'opacity-30', !disabled && 'cursor-grab active:cursor-grabbing')}
+      className={cx('relative touch-manipulation outline-none', drag.isDragging && 'opacity-25', !disabled && 'cursor-grab active:cursor-grabbing')}
     >
-      <TaskCard task={task} highlight={drop.isOver && !drag.isDragging} />
+      {/* Repère d'insertion : la carte déposée ici se placera juste au-dessus. */}
+      <span
+        aria-hidden
+        className={cx('absolute inset-x-0 -top-[7px] h-[2px] origin-left bg-accent transition-transform duration-300', drop.isOver && !drag.isDragging ? 'scale-x-100' : 'scale-x-0')}
+      />
+      <TaskCard task={task} />
     </div>
   );
 }
 
-function Column({
-  status,
-  tasks,
-  children,
-  onAdd,
-}: {
-  status: TaskStatus;
-  tasks: Task[];
-  children: React.ReactNode;
-  onAdd?: () => void;
-}) {
+function Column({ status, tasks, children, onAdd }: { status: TaskStatus; tasks: Task[]; children: React.ReactNode; onAdd?: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${status}` });
   const estimate = tasks.reduce((sum, t) => sum + (t.estimate ?? 0), 0);
   return (
     <section
       ref={setNodeRef}
-      className={cx(
-        'flex w-[82vw] shrink-0 snap-start flex-col rounded-2xl border bg-surface/60 sm:w-72 lg:w-auto lg:min-w-0 lg:flex-1',
-        isOver ? 'border-accent/60 bg-accent/5' : 'border-line',
-      )}
       aria-label={STATUS_LABEL[status]}
+      className={cx(
+        'flex w-[80vw] shrink-0 snap-start flex-col border-r border-rule pr-4 pl-4 transition-colors duration-300 first:pl-0 last:border-r-0 sm:w-72 lg:w-auto lg:min-w-0 lg:flex-1',
+        isOver && 'bg-paper-2/70',
+      )}
     >
-      <header className="flex items-center gap-2 px-4 pb-2 pt-4">
-        <span className="size-2 rounded-full" style={{ background: STATUS_COLOR[status] }} />
-        <h2 className="text-sm font-semibold">{STATUS_LABEL[status]}</h2>
-        <span className="font-mono text-xs text-faint">{tasks.length}</span>
-        {estimate > 0 && <span className="ml-auto font-mono text-[11px] text-faint">{estimate} h</span>}
+      <header className="pb-4">
+        <span className="block h-[2px] w-10" style={{ background: STATUS_COLOR[status] }} />
+        <div className="mt-3 flex items-baseline gap-3">
+          <h2 className="font-serif text-[28px] leading-none">{STATUS_LABEL[status]}</h2>
+          <span className="font-mono text-xs text-muted">{String(tasks.length).padStart(2, '0')}</span>
+          {estimate > 0 && <span className="ml-auto font-mono text-[11px] text-faint">{estimate} h</span>}
+        </div>
       </header>
-      <div className="flex min-h-24 flex-1 flex-col gap-2 p-2">{children}</div>
+      <div className="flex min-h-32 flex-1 flex-col gap-3">{children}</div>
       {onAdd && (
-        <button
-          type="button"
-          onClick={onAdd}
-          className="m-2 mt-0 flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm text-faint transition-colors hover:bg-surface-2 hover:text-fg"
-        >
-          <Plus className="size-4" /> Ajouter
+        <button type="button" onClick={onAdd} className="mt-4 self-start text-sm text-muted transition-colors hover:text-ink">
+          <span className="ink-link">+ Ajouter une tâche</span>
         </button>
       )}
     </section>
+  );
+}
+
+/**
+ * La carte soulevée suit le pointeur et s'incline selon la vitesse du geste,
+ * comme une feuille qu'on tient : elle se redresse dès qu'on ralentit.
+ */
+function LiftedCard({ task, velocity }: { task: Task; velocity: React.RefObject<number> }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!ref.current || prefersReducedMotion()) return;
+    const rotate = gsap.quickTo(ref.current, 'rotation', { duration: 0.5, ease: 'power3.out' });
+    let frame = 0;
+    const tick = () => {
+      rotate(Math.max(-9, Math.min(9, (velocity.current ?? 0) * 0.35)));
+      velocity.current = (velocity.current ?? 0) * 0.82;
+      frame = requestAnimationFrame(tick);
+    };
+    gsap.fromTo(ref.current, { scale: 1 }, { scale: 1.03, duration: 0.35, ease: 'back.out(2)' });
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [velocity]);
+  return (
+    <div ref={ref} className="will-change-transform">
+      <TaskCard task={task} lifted />
+    </div>
   );
 }
 
@@ -151,6 +170,11 @@ export function KanbanBoard({
   onAdd: (status: TaskStatus) => void;
 }) {
   const [active, setActive] = useState<Task | null>(null);
+  const board = useRef<HTMLDivElement>(null);
+  const flipState = useRef<Flip.FlipState | null>(null);
+  const velocity = useRef(0);
+  const lastX = useRef(0);
+
   // Un clic ouvre la tâche ; il faut bouger de 6 px (ou appuyer 180 ms au doigt) pour la déplacer.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -158,8 +182,23 @@ export function KanbanBoard({
     useSensor(KeyboardSensor),
   );
 
+  // Après chaque changement de la liste, les cartes glissent de leur ancienne
+  // place vers la nouvelle (GSAP Flip) au lieu de sauter.
+  useLayoutEffect(() => {
+    if (!flipState.current) return;
+    Flip.from(flipState.current, { duration: 0.75, ease: 'expo.out', nested: true, absoluteOnLeave: true });
+    flipState.current = null;
+  }, [tasks]);
+
   function handleStart(e: DragStartEvent) {
+    lastX.current = 0;
+    velocity.current = 0;
     setActive(tasks.find((t) => t.id === e.active.id) ?? null);
+  }
+
+  function handleMove(e: DragMoveEvent) {
+    velocity.current = e.delta.x - lastX.current + velocity.current * 0.5;
+    lastX.current = e.delta.x;
   }
 
   function handleEnd(e: DragEndEvent) {
@@ -169,12 +208,22 @@ export function KanbanBoard({
     if (!moving) return;
     const target = dropTarget(tasks, moving, String(e.over.id));
     if (!target || (target.status === moving.status && target.position === moving.position)) return;
+    if (board.current && !prefersReducedMotion()) {
+      flipState.current = Flip.getState(board.current.querySelectorAll('[data-flip-id]'));
+    }
     onMove(moving, target.status, target.position);
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleStart} onDragEnd={handleEnd} onDragCancel={() => setActive(null)}>
-      <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-4 sm:snap-none sm:-mx-6 sm:px-6 lg:mx-0 lg:overflow-visible lg:px-0">
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleStart}
+      onDragMove={handleMove}
+      onDragEnd={handleEnd}
+      onDragCancel={() => setActive(null)}
+    >
+      <div ref={board} className="-mx-5 flex snap-x snap-mandatory scroll-px-5 overflow-x-auto px-5 pb-6 sm:-mx-8 sm:snap-none sm:px-8 lg:mx-0 lg:overflow-visible lg:px-0">
         {STATUS_ORDER.map((status) => {
           const column = tasks.filter((t) => t.status === status).sort(byPosition);
           return (
@@ -183,16 +232,14 @@ export function KanbanBoard({
                 <DraggableTask key={task.id} task={task} disabled={!canEdit} onOpen={onOpen} />
               ))}
               {column.length === 0 && (
-                <p className="rounded-xl border border-dashed border-line px-3 py-6 text-center text-xs text-faint">
-                  {canEdit ? 'Déposez une tâche ici' : 'Aucune tâche'}
-                </p>
+                <p className="border-t border-dashed border-rule-strong pt-4 font-serif text-xl text-faint italic">{canEdit ? 'Rien ici. Déposez une tâche.' : 'Rien ici.'}</p>
               )}
             </Column>
           );
         })}
       </div>
-      <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(.2,.8,.2,1)' }}>
-        {active && <TaskCard task={active} dragging />}
+      <DragOverlay dropAnimation={{ duration: 260, easing: 'cubic-bezier(.16,1,.3,1)' }}>
+        {active && <LiftedCard task={active} velocity={velocity} />}
       </DragOverlay>
     </DndContext>
   );

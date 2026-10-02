@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { createContext, useCallback, useContext, useState } from 'react';
 
 interface Toast {
@@ -11,7 +11,7 @@ interface Toast {
 
 const ToastContext = createContext<(kind: Toast['kind'], text: string) => void>(() => undefined);
 
-/** Notifications éphémères en bas d'écran : confirmation d'une action ou erreur de l'API. */
+/** Notifications : une ligne d'encre en bas à gauche, qui monte puis s'efface. */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -24,20 +24,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4" aria-live="polite">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className="pointer-events-auto flex max-w-md items-center gap-2 rounded-xl border border-line bg-surface-2/95 px-4 py-3 text-sm shadow-xl shadow-black/40 backdrop-blur"
-          >
-            {t.kind === 'success' ? (
-              <CheckCircle2 className="size-4 shrink-0 text-teal" />
-            ) : (
-              <XCircle className="size-4 shrink-0 text-danger" />
-            )}
-            {t.text}
-          </div>
-        ))}
+      <div className="pointer-events-none fixed bottom-5 left-5 z-50 flex max-w-[calc(100vw-2.5rem)] flex-col items-start gap-2" aria-live="polite">
+        <AnimatePresence initial={false}>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              layout
+              initial={{ opacity: 0, y: 24, clipPath: 'inset(0 100% 0 0)' }}
+              animate={{ opacity: 1, y: 0, clipPath: 'inset(0 0% 0 0)' }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="pointer-events-auto flex items-center gap-3 bg-ink px-4 py-3 text-sm text-paper"
+            >
+              <span className={t.kind === 'success' ? 'font-mono text-[11px] tracking-[0.14em] text-[#9aa1ff] uppercase' : 'font-mono text-[11px] tracking-[0.14em] text-[#ff8a6b] uppercase'}>
+                {t.kind === 'success' ? 'Fait' : 'Erreur'}
+              </span>
+              {t.text}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

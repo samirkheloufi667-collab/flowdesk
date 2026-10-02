@@ -1,12 +1,11 @@
 'use client';
 
-import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 /**
- * Fenêtre modale fondée sur <dialog> : le navigateur gère le piège du focus,
- * la touche Échap et l'accessibilité. Le composant se contente de l'ouvrir
- * et de la fermer selon `open`.
+ * Panneau latéral fondé sur <dialog> : le navigateur gère le piège du focus,
+ * la touche Échap et l'accessibilité. Il glisse depuis la droite comme une
+ * page qu'on ajoute au dossier, au lieu d'une boîte centrée.
  */
 export function Modal({
   open,
@@ -35,25 +34,24 @@ export function Modal({
       ref={ref}
       onClose={onClose}
       onClick={(e) => {
-        // Un clic sur le fond (hors du contenu) ferme la fenêtre.
+        // Un clic sur le fond (hors du panneau) le ferme.
         if (e.target === ref.current) onClose();
       }}
-      className={`m-auto w-[calc(100%-2rem)] rounded-2xl border border-line bg-surface p-0 text-fg shadow-2xl shadow-black/60 backdrop:bg-black/60 backdrop:backdrop-blur-sm ${wide ? 'max-w-2xl' : 'max-w-lg'}`}
+      className={`sheet fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full border-l border-ink bg-paper p-0 text-ink ${wide ? 'max-w-2xl' : 'max-w-lg'}`}
     >
       {open && (
-        <div className="flex max-h-[85vh] flex-col">
-          <div className="flex items-center justify-between border-b border-line px-5 py-4">
-            <h2 className="text-base font-semibold">{title}</h2>
+        <div className="flex h-full flex-col">
+          <div className="flex items-start justify-between gap-6 border-b border-rule px-6 pt-8 pb-5 sm:px-8">
+            <h2 className="font-serif text-4xl leading-none">{title}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-              aria-label="Fermer"
+              className="ink-link mt-2 font-mono text-[11px] tracking-[0.14em] text-muted uppercase hover:text-ink"
             >
-              <X className="size-4" />
+              Fermer · Échap
             </button>
           </div>
-          <div className="overflow-y-auto p-5">{children}</div>
+          <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">{children}</div>
         </div>
       )}
     </dialog>

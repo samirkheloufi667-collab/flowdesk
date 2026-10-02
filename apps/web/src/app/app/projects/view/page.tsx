@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowLeft, CalendarDays, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { KanbanBoard } from '@/components/kanban';
+import { RevealText } from '@/components/motion/RevealText';
 import { ProjectForm } from '@/components/project-form';
 import { TaskForm } from '@/components/task-form';
 import { Modal } from '@/components/ui/modal';
@@ -18,6 +18,7 @@ import {
   PRIORITY_COLOR,
   PRIORITY_LABEL,
   PROJECT_STATUS_LABEL,
+  PROJECT_STATUS_TONE,
   STATUS_LABEL,
 } from '@/lib/format';
 import type { Member, Project, Task, TaskStatus, Team } from '@/lib/types';
@@ -34,6 +35,15 @@ export default function ProjectPage() {
     <Suspense fallback={<Spinner />}>
       <ProjectView />
     </Suspense>
+  );
+}
+
+function Meta({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-rule pt-3">
+      <dt className="font-mono text-[10px] tracking-[0.16em] text-faint uppercase">{label}</dt>
+      <dd className="mt-1.5 text-[15px]">{children}</dd>
+    </div>
   );
 }
 
@@ -83,77 +93,86 @@ function ProjectView() {
     }
   }
 
+  const back = (
+    <Link href="/app/projects" className="ink-link font-mono text-[11px] tracking-[0.14em] text-muted uppercase hover:text-ink">
+      ← Sommaire des projets
+    </Link>
+  );
+
   if (project.error) {
     return (
-      <div className="flex flex-col gap-4">
-        <Link href="/app/projects" className="flex items-center gap-1.5 text-sm text-muted hover:text-fg">
-          <ArrowLeft className="size-4" /> Projets
-        </Link>
+      <div className="flex flex-col gap-6">
+        {back}
         <ErrorNote>{project.error}</ErrorNote>
       </div>
     );
   }
   if (!project.data) return <Spinner />;
   const p = project.data;
+  const done = tasks.data?.filter((t) => t.status === 'DONE').length ?? p.doneCount ?? 0;
+  const total = tasks.data?.length ?? p.taskCount ?? 0;
+  const progress = total ? Math.round((done / total) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/app/projects" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg">
-          <ArrowLeft className="size-4" /> Projets
-        </Link>
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="size-3.5 rounded-[5px]" style={{ background: p.color }} />
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{p.name}</h1>
-              <Badge color="#3ddbc8">{PROJECT_STATUS_LABEL[p.status]}</Badge>
-            </div>
-            {p.description && <p className="mt-2 max-w-2xl text-sm text-muted">{p.description}</p>}
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
-              <span className="flex items-center gap-1.5">
-                <Users className="size-3.5" /> {p.team?.name ?? 'Sans équipe'}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CalendarDays className="size-3.5" /> {formatFullDate(p.startDate)} → {formatFullDate(p.dueDate)}
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-12">
+      <header className="border-b border-ink pb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {back}
+          <div className="flex flex-wrap items-center gap-5">
             {canManage && (
               <>
-                <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-                  <Pencil className="size-3.5" /> Modifier
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} aria-label="Supprimer le projet">
-                  <Trash2 className="size-3.5" />
-                </Button>
+                <button type="button" className="ink-link text-sm text-muted hover:text-ink" onClick={() => setEditing(true)}>
+                  Modifier
+                </button>
+                <button type="button" className="ink-link text-sm text-late" onClick={() => setConfirmDelete(true)}>
+                  Supprimer
+                </button>
               </>
             )}
             {canEditTasks && (
               <Button size="sm" onClick={() => setNewTaskStatus('TODO')}>
-                <Plus className="size-4" /> Nouvelle tâche
+                Nouvelle tâche
               </Button>
             )}
           </div>
         </div>
-      </div>
 
-      {!canEditTasks && (
-        <p className="rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-muted">
-          Vous consultez ce projet en lecture seule.
-        </p>
-      )}
+        <div className="mt-10 grid gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <span aria-hidden className="mb-6 block h-1.5 w-24" style={{ background: p.color }} />
+            <RevealText as="h1" className="font-serif text-6xl leading-[0.92] tracking-[-0.015em] sm:text-7xl lg:text-8xl">
+              {p.name}
+            </RevealText>
+            {p.description && <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-2">{p.description}</p>}
+          </div>
+          <dl className="grid grid-cols-2 content-end gap-x-6 gap-y-5 lg:col-span-4">
+            <Meta label="Statut">
+              <Badge color={PROJECT_STATUS_TONE[p.status]}>{PROJECT_STATUS_LABEL[p.status]}</Badge>
+            </Meta>
+            <Meta label="Équipe">{p.team?.name ?? 'Sans équipe'}</Meta>
+            <Meta label="Début">{formatFullDate(p.startDate)}</Meta>
+            <Meta label="Échéance">{formatFullDate(p.dueDate)}</Meta>
+            <div className="col-span-2 border-t border-rule pt-3">
+              <dt className="flex items-baseline justify-between font-mono text-[10px] tracking-[0.16em] text-faint uppercase">
+                Avancement
+                <span>
+                  {done}/{total} tâches
+                </span>
+              </dt>
+              <dd className="mt-1 font-serif text-5xl italic">
+                {progress}
+                <span className="text-2xl not-italic text-muted"> %</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </header>
+
+      {!canEditTasks && <p className="border-l-2 border-ink pl-3 font-serif text-xl italic">Vous consultez ce projet en lecture seule.</p>}
 
       {tasks.error && <ErrorNote>{tasks.error}</ErrorNote>}
       {tasks.data ? (
-        <KanbanBoard
-          tasks={tasks.data}
-          canEdit={canEditTasks}
-          onMove={move}
-          onOpen={setOpenTask}
-          onAdd={(status) => setNewTaskStatus(status)}
-        />
+        <KanbanBoard tasks={tasks.data} canEdit={canEditTasks} onMove={move} onOpen={setOpenTask} onAdd={(status) => setNewTaskStatus(status)} />
       ) : (
         <Spinner />
       )}
@@ -196,28 +215,24 @@ function ProjectView() {
               }}
             />
           ) : (
-            <div className="flex flex-col gap-4 text-sm">
-              <h3 className="text-lg font-semibold">{openTask.title}</h3>
-              {openTask.description && <p className="whitespace-pre-wrap text-muted">{openTask.description}</p>}
-              <dl className="grid grid-cols-2 gap-3">
-                <dt className="text-muted">Colonne</dt>
-                <dd>{STATUS_LABEL[openTask.status]}</dd>
-                <dt className="text-muted">Priorité</dt>
-                <dd>
+            <div className="flex flex-col gap-8">
+              <h3 className="font-serif text-4xl leading-[1.05]">{openTask.title}</h3>
+              {openTask.description && <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-ink-2">{openTask.description}</p>}
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-5">
+                <Meta label="Colonne">{STATUS_LABEL[openTask.status]}</Meta>
+                <Meta label="Priorité">
                   <Badge color={PRIORITY_COLOR[openTask.priority]}>{PRIORITY_LABEL[openTask.priority]}</Badge>
-                </dd>
-                <dt className="text-muted">Responsable</dt>
-                <dd className="flex items-center gap-2">
+                </Meta>
+                <Meta label="Responsable">
                   {openTask.assignee ? (
-                    <>
-                      <Avatar name={openTask.assignee.name} size={22} /> {openTask.assignee.name}
-                    </>
+                    <span className="flex items-center gap-2">
+                      <Avatar name={openTask.assignee.name} size={24} /> {openTask.assignee.name}
+                    </span>
                   ) : (
                     '—'
                   )}
-                </dd>
-                <dt className="text-muted">Échéance</dt>
-                <dd>{formatFullDate(openTask.dueDate)}</dd>
+                </Meta>
+                <Meta label="Échéance">{formatFullDate(openTask.dueDate)}</Meta>
               </dl>
             </div>
           ))}
@@ -240,15 +255,15 @@ function ProjectView() {
       </Modal>
 
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Supprimer le projet">
-        <p className="text-sm text-muted">
-          « {p.name} » et ses {tasks.data?.length ?? 0} tâche(s) seront supprimés définitivement.
+        <p className="font-serif text-2xl leading-snug">
+          « {p.name} » et ses {tasks.data?.length ?? 0} tâche{(tasks.data?.length ?? 0) > 1 ? 's' : ''} seront supprimés définitivement.
         </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-            Annuler
-          </Button>
+        <div className="mt-8 flex gap-2">
           <Button variant="danger" onClick={deleteProject}>
             Supprimer
+          </Button>
+          <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+            Annuler
           </Button>
         </div>
       </Modal>

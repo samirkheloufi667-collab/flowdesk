@@ -1,13 +1,10 @@
 import Link from 'next/link';
 
-/** Logo : un losange de flux et le nom. */
-export function Brand({ href = '/' }: { href?: string }) {
+/** Logotype : le nom en italique, comme un titre de journal. Pas de pictogramme. */
+export function Brand({ href = '/', className = '' }: { href?: string; className?: string }) {
   return (
-    <Link href={href} className="flex items-center gap-2.5 font-semibold tracking-tight">
-      <span className="relative flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-teal">
-        <span className="size-2.5 rotate-45 rounded-[3px] bg-ink" />
-      </span>
-      <span className="text-[15px]">FlowDesk</span>
+    <Link href={href} className={`font-serif text-[26px] leading-none tracking-[-0.01em] italic ${className}`} aria-label="FlowDesk, accueil">
+      FlowDesk<span className="text-accent not-italic">.</span>
     </Link>
   );
 }

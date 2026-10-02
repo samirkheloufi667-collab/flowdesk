@@ -1,40 +1,63 @@
 @import 'tailwindcss';
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
 
 /*
- * FlowDesk — thème sombre assumé, dans la lignée des composants React Bits.
- * Un seul accent violet, repris du fond Aurora ; le sarcelle signale ce qui est
- * terminé, l'ambre ce qui attend, le rose ce qui déborde.
+ * FlowDesk — direction « éditoriale ».
+ * Du papier, de l'encre, un seul bleu outremer pour l'action. Pas de cartes
+ * arrondies : des filets fins, une grille, une typographie de presse.
+ * Le titre est en Instrument Serif, le texte en Hanken Grotesk, les chiffres
+ * en IBM Plex Mono (chasse fixe : les colonnes de nombres restent alignées).
  */
 @theme {
-  --color-ink: #0a0b10;
-  --color-surface: #11131b;
-  --color-surface-2: #171a24;
-  --color-surface-3: #1e2230;
-  --color-line: #232735;
-  --color-line-strong: #2f3446;
-  --color-fg: #e9ebf2;
-  --color-muted: #8a91a6;
-  --color-faint: #5d6478;
-  --color-accent: #7c6cff;
-  --color-accent-strong: #9a8cff;
-  --color-teal: #3ddbc8;
-  --color-warn: #fbbf24;
-  --color-danger: #fb7185;
+  --color-paper: #f3f0e8;
+  --color-paper-2: #ebe7dc;
+  --color-paper-3: #e1dccf;
+  --color-ink: #141412;
+  --color-ink-2: #2b2a26;
+  --color-muted: #6e6a60;
+  --color-faint: #9c978b;
+  --color-rule: #d8d2c4;
+  --color-rule-strong: #b8b1a1;
+  --color-accent: #2f3bff;
+  --color-accent-ink: #1d26c4;
+  --color-late: #d4421e;
+  --color-done: #2f6b46;
+  --color-wait: #b07a12;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, 'SFMono-Regular', monospace;
+  --font-serif: 'Instrument Serif', 'Times New Roman', serif;
+  --font-sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
+  background: var(--color-paper);
 }
 
 body {
-  background: var(--color-ink);
-  color: var(--color-fg);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Grain du papier : une texture très légère, fixe, qui évite l'aplat numérique. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 h1,
@@ -44,18 +67,59 @@ h3 {
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--color-accent) 45%, transparent);
+  background: var(--color-accent);
+  color: var(--color-paper);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent-strong);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
-/* Barres de défilement discrètes, cohérentes avec le fond. */
+/* Lien souligné qui se trace de gauche à droite au survol. */
+.ink-link {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.45s var(--ease-out-expo);
+}
+.ink-link:hover,
+.ink-link:focus-visible {
+  background-size: 100% 1px;
+}
+
+/* Masque utilisé pour révéler les lignes de titre (voir components/motion). */
+.line-mask {
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+/* Panneau latéral (<dialog>) : glisse depuis la droite. */
+dialog.sheet[open] {
+  animation: sheet-in 0.55s var(--ease-out-expo);
+}
+dialog.sheet::backdrop {
+  background: rgb(20 20 18 / 0.28);
+  backdrop-filter: blur(2px);
+  animation: fade-in 0.4s ease;
+}
+@keyframes sheet-in {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-line-strong) transparent;
+  scrollbar-color: var(--color-rule-strong) transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -64,5 +128,32 @@ h3 {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Défilement doux (Lenis), seulement sur la page d'accueil. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Bandeau défilant de l'accueil. */
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker {
+  animation: ticker 60s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    animation: none;
   }
 }

@@ -1,38 +1,69 @@
 'use client';
 
-import { AlertTriangle, CalendarClock, CheckCircle2, Database, FolderKanban, ListTodo, Zap } from 'lucide-react';
 import Link from 'next/link';
-import CountUp from '@/components/reactbits/CountUp';
-import { Avatar, Badge, ErrorNote, PageHeader, Progress, Spinner } from '@/components/ui/primitives';
+import { useRef } from 'react';
+import { Counter } from '@/components/motion/Counter';
+import { gsap, prefersReducedMotion, useGSAP } from '@/components/motion/gsap';
+import { Stagger } from '@/components/motion/Stagger';
+import { Avatar, Badge, cx, ErrorNote, PageHeader, SectionLabel, Spinner } from '@/components/ui/primitives';
 import { useAuth } from '@/lib/auth';
-import { dueLabel, PRIORITY_COLOR, PRIORITY_LABEL, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from '@/lib/format';
+import { daysUntil, PRIORITY_COLOR, PRIORITY_LABEL, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from '@/lib/format';
 import type { Dashboard } from '@/lib/types';
 import { useApi } from '@/lib/use-api';
 
-function Stat({
-  label,
-  value,
-  icon: Icon,
-  tone = 'default',
-  suffix,
-}: {
-  label: string;
-  value: number;
-  icon: React.ComponentType<{ className?: string }>;
-  tone?: 'default' | 'danger' | 'accent';
-  suffix?: string;
-}) {
-  const toneClass = tone === 'danger' ? 'text-danger' : tone === 'accent' ? 'text-accent-strong' : 'text-fg';
+const dayFmt = new Intl.DateTimeFormat('fr-FR', { day: '2-digit' });
+const monthFmt = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
+const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+/** La phrase d'ouverture : ce qui compte aujourd'hui, en une ligne. */
+function headline(d: Dashboard) {
+  const open = d.tasks.total - d.tasks.byStatus.DONE;
+  if (open === 0) return 'Toutes les tâches sont terminées. Rare, et mérité.';
+  const late = d.tasks.overdue ? `, dont ${d.tasks.overdue} en retard` : '';
+  return `${open} tâche${open > 1 ? 's' : ''} ouverte${open > 1 ? 's' : ''}${late}. ${d.myOpenTasks ? `${d.myOpenTasks} vous ${d.myOpenTasks > 1 ? 'attendent' : 'attend'}.` : 'Aucune ne vous est assignée.'}`;
+}
+
+/** Barre de répartition : chaque segment s'étire à sa largeur, l'un après l'autre. */
+function Distribution({ data }: { data: Dashboard }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.from('[data-seg]', { scaleX: 0, transformOrigin: 'left', duration: 1.2, stagger: 0.12, ease: 'expo.inOut' });
+    },
+    { scope: ref, dependencies: [data.tasks.total] },
+  );
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
-      <div className="flex items-center justify-between text-muted">
-        <span className="text-[13px]">{label}</span>
-        <Icon className="size-4" />
+    <div ref={ref}>
+      <div className="flex h-10 w-full gap-[3px]">
+        {STATUS_ORDER.map((s) => {
+          const n = data.tasks.byStatus[s];
+          if (!n) return null;
+          return <div key={s} data-seg style={{ flexGrow: n, background: STATUS_COLOR[s] }} title={`${STATUS_LABEL[s]} : ${n}`} />;
+        })}
       </div>
-      <p className={`mt-3 font-mono text-3xl font-medium tabular-nums tracking-tight ${toneClass}`}>
-        <CountUp to={value} duration={1.2} separator=" " />
-        {suffix}
+      <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+        {STATUS_ORDER.map((s) => (
+          <div key={s} className="flex items-baseline justify-between border-t border-rule pt-2">
+            <dt className="flex items-center gap-2 text-sm text-muted">
+              <span className="inline-block size-2" style={{ background: STATUS_COLOR[s] }} />
+              {STATUS_LABEL[s]}
+            </dt>
+            <dd className="font-mono text-sm">{data.tasks.byStatus[s]}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function BigFigure({ value, label, tone, suffix }: { value: number; label: string; tone?: 'late' | 'accent'; suffix?: string }) {
+  return (
+    <div className="border-rule py-6 first:pt-0 sm:border-l sm:py-0 sm:pl-6 sm:first:border-l-0 sm:first:pl-0">
+      <p className={cx('font-serif text-7xl leading-none tracking-tight italic sm:text-8xl', tone === 'late' && value > 0 ? 'text-late' : tone === 'accent' ? 'text-accent' : 'text-ink')}>
+        <Counter value={value} suffix={suffix} />
       </p>
+      <p className="mt-3 font-mono text-[11px] tracking-[0.14em] text-muted uppercase">{label}</p>
     </div>
   );
 }
@@ -45,145 +76,86 @@ export default function DashboardPage() {
   if (!workspace) return <Spinner />;
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title={`Bonjour ${firstName ?? ''}`}
-        subtitle={`Voici où en est ${workspace.name} aujourd’hui.`}
-        actions={
-          data && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 font-mono text-[11px] text-muted"
-              title="Le tableau de bord est mis en cache 60 secondes et invalidé à chaque modification."
-            >
-              <Database className="size-3" />
-              {data.cache.backend === 'redis' ? 'Redis' : 'Mémoire'} · {data.cache.hit ? 'depuis le cache' : 'recalculé'}
-            </span>
-          )
-        }
-      />
+    <div className="flex flex-col gap-14">
+      <PageHeader index={`Édition du jour — ${workspace.name}`} title={`Bonjour ${firstName ?? ''}.`} subtitle={data ? headline(data) : undefined} />
 
       {error && <ErrorNote>{error}</ErrorNote>}
       {loading && !data && <Spinner />}
 
       {data && (
         <>
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Projets actifs" value={data.projects.byStatus.ACTIVE} icon={FolderKanban} />
-            <Stat
-              label="Tâches ouvertes"
-              value={data.tasks.total - data.tasks.byStatus.DONE}
-              icon={ListTodo}
-            />
-            <Stat label="En retard" value={data.tasks.overdue} icon={AlertTriangle} tone={data.tasks.overdue ? 'danger' : 'default'} />
-            <Stat label="Assignées à moi" value={data.myOpenTasks} icon={Zap} tone="accent" />
+          <section className="grid divide-y divide-rule sm:grid-cols-4 sm:divide-y-0">
+            <BigFigure value={data.projects.byStatus.ACTIVE} label="Projets actifs" />
+            <BigFigure value={data.tasks.total - data.tasks.byStatus.DONE} label="Tâches ouvertes" />
+            <BigFigure value={data.tasks.overdue} label="En retard" tone="late" />
+            <BigFigure value={data.myOpenTasks} label="Pour vous" tone="accent" />
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-2xl border border-line bg-surface p-6 lg:col-span-2">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-semibold">Répartition des tâches</h2>
-                <span className="text-sm text-muted">
-                  <span className="font-mono text-fg">{data.tasks.completionRate} %</span> terminées
-                </span>
-              </div>
-
-              {data.tasks.total === 0 ? (
-                <p className="mt-6 text-sm text-muted">Aucune tâche pour l’instant.</p>
+          <div className="grid gap-14 lg:grid-cols-12 lg:gap-10">
+            <section className="lg:col-span-8">
+              <SectionLabel aside={`${data.upcoming.length} à venir`}>Échéances</SectionLabel>
+              {data.upcoming.length === 0 ? (
+                <p className="mt-6 font-serif text-2xl text-muted italic">Aucune tâche datée en attente.</p>
               ) : (
-                <>
-                  <div className="mt-6 flex h-3 w-full overflow-hidden rounded-full bg-surface-3">
-                    {STATUS_ORDER.map((s) => {
-                      const n = data.tasks.byStatus[s];
-                      if (!n) return null;
-                      return (
-                        <div
-                          key={s}
-                          style={{ width: `${(100 * n) / data.tasks.total}%`, background: STATUS_COLOR[s] }}
-                          title={`${STATUS_LABEL[s]} : ${n}`}
-                        />
-                      );
-                    })}
-                  </div>
-                  <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {STATUS_ORDER.map((s) => (
-                      <div key={s} className="flex items-center gap-2.5">
-                        <span className="size-2.5 rounded-full" style={{ background: STATUS_COLOR[s] }} />
-                        <dt className="text-sm text-muted">{STATUS_LABEL[s]}</dt>
-                        <dd className="ml-auto font-mono text-sm tabular-nums">{data.tasks.byStatus[s]}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-line bg-surface p-6">
-              <h2 className="font-semibold">Charge des ressources</h2>
-              <p className="mt-1 text-sm text-muted">Occupation moyenne aujourd’hui</p>
-              <p className="mt-5 font-mono text-4xl font-medium tabular-nums">
-                <CountUp to={data.resources.averageUtilization} duration={1.2} /> %
-              </p>
-              <div className="mt-4">
-                <Progress
-                  value={data.resources.averageUtilization}
-                  color={data.resources.averageUtilization > 90 ? 'var(--color-warn)' : 'var(--color-teal)'}
-                />
-              </div>
-              <p className="mt-4 flex items-center gap-2 text-sm text-muted">
-                {data.resources.overbooked ? (
-                  <>
-                    <AlertTriangle className="size-4 text-danger" />
-                    {data.resources.overbooked} ressource(s) surréservée(s)
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-4 text-teal" />
-                    Aucune surréservation sur {data.resources.total} ressources
-                  </>
-                )}
-              </p>
-              <Link href="/app/resources" className="mt-5 inline-block text-sm text-accent-strong hover:underline">
-                Voir le planning →
-              </Link>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-line bg-surface">
-            <div className="flex items-center gap-2 border-b border-line px-6 py-4">
-              <CalendarClock className="size-4 text-muted" />
-              <h2 className="font-semibold">Prochaines échéances</h2>
-            </div>
-            {data.upcoming.length === 0 ? (
-              <p className="px-6 py-8 text-sm text-muted">Aucune tâche datée en attente.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {data.upcoming.map((task) => {
-                  const due = dueLabel(task.dueDate);
-                  return (
-                    <li key={task.id}>
-                      <Link
-                        href={`/app/projects/view?id=${task.project.id}`}
-                        className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3.5 transition-colors hover:bg-surface-2/50"
-                      >
-                        <span className="size-2 shrink-0 rounded-full" style={{ background: task.project.color }} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{task.title}</p>
-                          <p className="truncate text-xs text-muted">{task.project.name}</p>
-                        </div>
-                        <Badge color={PRIORITY_COLOR[task.priority]}>{PRIORITY_LABEL[task.priority]}</Badge>
-                        {due && (
-                          <span className={`w-28 text-right text-xs ${due.late ? 'font-medium text-danger' : 'text-muted'}`}>
-                            {due.text}
+                <Stagger as="ol" watch={data.upcoming.length}>
+                  {data.upcoming.map((task) => {
+                    const days = daysUntil(task.dueDate);
+                    const late = days !== null && days < 0;
+                    const date = task.dueDate ? new Date(task.dueDate) : null;
+                    return (
+                      <li key={task.id} data-reveal className="border-b border-rule">
+                        <Link href={`/app/projects/view?id=${task.project.id}`} className="group grid grid-cols-[64px_1fr_auto] items-center gap-x-5 py-4 sm:grid-cols-[72px_1fr_auto_auto]">
+                          <span className={cx('text-center leading-none', late ? 'text-late' : 'text-ink')}>
+                            <span className="block font-serif text-4xl">{date ? dayFmt.format(date) : '—'}</span>
+                            <span className="mt-1 block font-mono text-[10px] tracking-[0.14em] uppercase">{date ? monthFmt.format(date).replace('.', '') : ''}</span>
                           </span>
-                        )}
-                        {task.assignee ? <Avatar name={task.assignee.name} size={24} /> : <span className="size-6" />}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+                          <span className="min-w-0">
+                            <span className="block truncate text-[17px] transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:translate-x-2">{task.title}</span>
+                            <span className="mt-1 flex items-center gap-2 text-sm text-muted">
+                              <span className="inline-block size-2" style={{ background: task.project.color }} />
+                              {task.project.name}
+                              {late && <span className="font-mono text-[11px] text-late uppercase">· en retard de {-(days ?? 0)} j</span>}
+                            </span>
+                          </span>
+                          <span className="hidden sm:block">
+                            <Badge color={PRIORITY_COLOR[task.priority]}>{PRIORITY_LABEL[task.priority]}</Badge>
+                          </span>
+                          {task.assignee ? <Avatar name={task.assignee.name} size={30} /> : <span className="size-[30px]" />}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </Stagger>
+              )}
+            </section>
+
+            <aside className="flex flex-col gap-12 lg:col-span-4">
+              <section>
+                <SectionLabel aside={`${data.tasks.completionRate} % terminées`}>Avancement</SectionLabel>
+                <div className="mt-5">{data.tasks.total === 0 ? <p className="text-sm text-muted">Aucune tâche pour l’instant.</p> : <Distribution data={data} />}</div>
+              </section>
+
+              <section>
+                <SectionLabel>Ressources</SectionLabel>
+                <p className="mt-5 font-serif text-6xl leading-none italic">
+                  <Counter value={data.resources.averageUtilization} suffix=" %" />
+                </p>
+                <p className="mt-2 text-sm text-muted">d’occupation moyenne aujourd’hui</p>
+                <p className={cx('mt-5 border-l-2 pl-3 text-sm', data.resources.overbooked ? 'border-late text-late' : 'border-done text-done')}>
+                  {data.resources.overbooked
+                    ? `${data.resources.overbooked} ressource(s) surréservée(s).`
+                    : `Aucune surréservation sur ${data.resources.total} ressources.`}
+                </p>
+                <Link href="/app/resources" className="ink-link mt-5 inline-block text-sm">
+                  Voir le planning →
+                </Link>
+              </section>
+
+              <p className="font-mono text-[11px] leading-relaxed text-faint" title="Le tableau de bord est mis en cache 60 secondes et invalidé à chaque modification.">
+                Calculé à {timeFmt.format(new Date(data.computedAt))} · {data.cache.hit ? 'servi depuis le cache' : 'recalculé'} ({data.cache.backend === 'redis' ? 'Redis' : 'mémoire'})
+              </p>
+            </aside>
+          </div>
         </>
       )}
     </div>

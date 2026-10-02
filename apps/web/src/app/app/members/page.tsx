@@ -1,9 +1,9 @@
 'use client';
 
-import { UserMinus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
+import { Stagger } from '@/components/motion/Stagger';
 import { Modal } from '@/components/ui/modal';
-import { Avatar, Badge, Button, ErrorNote, Field, Input, PageHeader, Select, Spinner } from '@/components/ui/primitives';
+import { Avatar, Badge, Button, ErrorNote, Field, Input, PageHeader, SectionLabel, Select, Spinner } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -12,10 +12,10 @@ import type { Member, Role } from '@/lib/types';
 import { useApi } from '@/lib/use-api';
 
 const ROLE_COLOR: Record<Role, string> = {
-  OWNER: '#9a8cff',
-  ADMIN: '#3ddbc8',
-  MEMBER: '#60a5fa',
-  VIEWER: '#8a91a6',
+  OWNER: '#141412',
+  ADMIN: '#2f3bff',
+  MEMBER: '#2f6b46',
+  VIEWER: '#9c978b',
 };
 
 const ROLE_HELP: Record<Role, string> = {
@@ -83,14 +83,20 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-14">
       <PageHeader
+        index={workspace.name}
         title="Membres"
-        subtitle={members.data ? `${members.data.length} personne(s) dans ${workspace.name}` : undefined}
+        subtitle={members.data ? `${members.data.length} personne${members.data.length > 1 ? 's' : ''}, quatre rôles. Chacun voit et modifie exactement ce que le sien autorise.` : undefined}
         actions={
           canManage && (
-            <Button onClick={() => { setError(null); setInviting(true); }}>
-              <UserPlus className="size-4" /> Ajouter un membre
+            <Button
+              onClick={() => {
+                setError(null);
+                setInviting(true);
+              }}
+            >
+              Ajouter un membre
             </Button>
           )
         }
@@ -99,61 +105,62 @@ export default function MembersPage() {
       {members.error && <ErrorNote>{members.error}</ErrorNote>}
       {members.loading && !members.data && <Spinner />}
 
-      {members.data && (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
-          {members.data.map((m) => {
-            const self = m.user.id === me?.id;
-            return (
-              <li key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
-                <Avatar name={m.user.name} size={36} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {m.user.name} {self && <span className="font-normal text-faint">(vous)</span>}
-                  </p>
-                  <p className="truncate text-xs text-muted">{m.user.email}</p>
-                </div>
-                {isOwner && !self ? (
-                  <Select
-                    aria-label={`Rôle de ${m.user.name}`}
-                    value={m.role}
-                    onChange={(e) => changeRole(m, e.target.value as Role)}
-                    className="h-8 w-36 text-[13px]"
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Badge color={ROLE_COLOR[m.role]}>{ROLE_LABEL[m.role]}</Badge>
-                )}
-                {canManage && !self && (m.role !== 'OWNER' || isOwner) && (
-                  <button
-                    type="button"
-                    onClick={() => remove(m)}
-                    className="rounded-md p-1.5 text-faint hover:bg-surface-2 hover:text-danger"
-                    aria-label={`Retirer ${m.user.name}`}
-                    title="Retirer de l’espace"
-                  >
-                    <UserMinus className="size-4" />
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className="grid gap-14 lg:grid-cols-12 lg:gap-10">
+        {members.data && (
+          <Stagger as="ol" watch={members.data.length} className="-mt-14 lg:col-span-8">
+            {members.data.map((m) => {
+              const self = m.user.id === me?.id;
+              return (
+                <li key={m.id} data-reveal className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-rule py-5">
+                  <Avatar name={m.user.name} size={44} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-serif text-2xl leading-tight">
+                      {m.user.name} {self && <span className="text-base text-faint italic">— vous</span>}
+                    </p>
+                    <p className="mt-0.5 truncate font-mono text-[12px] text-muted">{m.user.email}</p>
+                  </div>
+                  {isOwner && !self ? (
+                    <Select aria-label={`Rôle de ${m.user.name}`} value={m.role} onChange={(e) => changeRole(m, e.target.value as Role)} className="h-9 w-36 text-[14px]">
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABEL[r]}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Badge color={ROLE_COLOR[m.role]}>{ROLE_LABEL[m.role]}</Badge>
+                  )}
+                  {canManage && !self && (m.role !== 'OWNER' || isOwner) && (
+                    <button type="button" onClick={() => remove(m)} className="ink-link text-[13px] text-muted hover:text-late" title="Retirer de l’espace">
+                      Retirer
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </Stagger>
+        )}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {ROLES.map((r) => (
-          <div key={r} className="rounded-xl border border-line bg-surface/60 p-4">
-            <Badge color={ROLE_COLOR[r]}>{ROLE_LABEL[r]}</Badge>
-            <p className="mt-2 text-xs leading-relaxed text-muted">{ROLE_HELP[r]}</p>
-          </div>
-        ))}
-      </section>
+        <aside className="lg:col-span-4">
+          <SectionLabel>Les rôles</SectionLabel>
+          <dl>
+            {ROLES.map((r, i) => (
+              <div key={r} className="border-b border-rule py-4">
+                <dt className="flex items-baseline gap-3">
+                  <span className="font-mono text-[10px] text-faint">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="font-serif text-2xl" style={{ color: ROLE_COLOR[r] }}>
+                    {ROLE_LABEL[r]}
+                  </span>
+                </dt>
+                <dd className="mt-1 pl-7 text-sm leading-relaxed text-muted">{ROLE_HELP[r]}</dd>
+              </div>
+            ))}
+          </dl>
+        </aside>
+      </div>
 
       <Modal open={inviting} onClose={() => setInviting(false)} title="Ajouter un membre">
-        <form onSubmit={invite} className="flex flex-col gap-4">
+        <form onSubmit={invite} className="flex flex-col gap-7">
           {error && <ErrorNote>{error}</ErrorNote>}
           <Field label="E-mail" htmlFor="m-email" hint="La personne doit déjà avoir un compte FlowDesk.">
             <Input id="m-email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoFocus />
@@ -161,13 +168,19 @@ export default function MembersPage() {
           <Field label="Rôle" htmlFor="m-role" hint={ROLE_HELP[form.role]}>
             <Select id="m-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
               {grantable.map((r) => (
-                <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
               ))}
             </Select>
           </Field>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setInviting(false)}>Annuler</Button>
-            <Button type="submit" loading={pending}>Ajouter</Button>
+          <div className="flex gap-2 border-t border-rule pt-6">
+            <Button type="submit" loading={pending}>
+              Ajouter
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setInviting(false)}>
+              Annuler
+            </Button>
           </div>
         </form>
       </Modal>

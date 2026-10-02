@@ -19,8 +19,7 @@ export default function RegisterPage() {
     if (status === 'authenticated') router.replace('/app');
   }, [status, router]);
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,18 +41,19 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Créer votre espace"
-      subtitle="Un compte, un premier espace de travail dont vous êtes propriétaire."
+      title="Un nouvel espace."
+      subtitle="Un compte, un premier espace de travail dont vous êtes propriétaire. Invitez votre équipe ensuite."
       footer={
         <>
           Déjà inscrit ?{' '}
-          <Link href="/login" className="font-medium text-fg hover:text-accent-strong">
+          <Link href="/login" className="ink-link text-ink">
             Se connecter
           </Link>
         </>
       }
     >
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-col gap-7">
+        <p className="font-serif text-3xl">Inscription</p>
         {error && <ErrorNote>{error}</ErrorNote>}
         <Field label="Nom complet" htmlFor="name">
           <Input id="name" autoComplete="name" required minLength={2} value={form.name} onChange={set('name')} />
@@ -67,8 +67,8 @@ export default function RegisterPage() {
         <Field label="Nom de l’espace" htmlFor="workspace" hint="Facultatif — votre entreprise ou votre équipe.">
           <Input id="workspace" placeholder="Studio Nova" value={form.workspaceName} onChange={set('workspaceName')} />
         </Field>
-        <Button type="submit" loading={pending} className="mt-1 w-full">
-          Créer mon compte
+        <Button type="submit" loading={pending} className="w-full">
+          Créer mon espace
         </Button>
       </form>
     </AuthShell>

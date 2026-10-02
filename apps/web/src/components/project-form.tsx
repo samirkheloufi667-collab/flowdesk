@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
-import { PROJECT_STATUS_LABEL, toInputDate } from '@/lib/format';
+import { INK_COLORS, PROJECT_STATUS_LABEL, toInputDate } from '@/lib/format';
 import type { Project, ProjectStatus, Team } from '@/lib/types';
-import { Button, cx, ErrorNote, Field, Input, Select, Textarea } from './ui/primitives';
+import { Button, ErrorNote, Field, InkPicker, Input, Select, Textarea } from './ui/primitives';
 
-const COLORS = ['#7c6cff', '#3ddbc8', '#ec4899', '#f59e0b', '#0ea5e9', '#10b981', '#f43f5e', '#a3e635'];
+const COLORS = INK_COLORS;
 
 /** Création et modification d'un projet : même formulaire, requête différente. */
 export function ProjectForm({
@@ -60,15 +60,28 @@ export function ProjectForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-7">
       {error && <ErrorNote>{error}</ErrorNote>}
-      <Field label="Nom du projet" htmlFor="p-name">
-        <Input id="p-name" required minLength={2} maxLength={80} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
-      </Field>
+      <div>
+        <label htmlFor="p-name" className="sr-only">
+          Nom du projet
+        </label>
+        <input
+          id="p-name"
+          required
+          minLength={2}
+          maxLength={80}
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Nom du projet"
+          autoFocus
+          className="w-full border-0 border-b border-rule bg-transparent px-0 pb-3 font-serif text-5xl leading-none text-ink placeholder:text-faint focus:border-accent focus:ring-0 focus:outline-none"
+        />
+      </div>
       <Field label="Description" htmlFor="p-desc">
         <Textarea id="p-desc" maxLength={2000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2">
         <Field label="Statut" htmlFor="p-status">
           <Select id="p-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ProjectStatus })}>
             {(Object.keys(PROJECT_STATUS_LABEL) as ProjectStatus[]).map((s) => (
@@ -95,28 +108,13 @@ export function ProjectForm({
           <Input id="p-due" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
         </Field>
       </div>
-      <fieldset>
-        <legend className="mb-2 text-[13px] font-medium text-muted">Couleur</legend>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setForm({ ...form, color: c })}
-              className={cx('size-7 rounded-full transition-transform hover:scale-110', form.color === c && 'ring-2 ring-fg ring-offset-2 ring-offset-surface')}
-              style={{ background: c }}
-              aria-label={`Couleur ${c}`}
-              aria-pressed={form.color === c}
-            />
-          ))}
-        </div>
-      </fieldset>
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Annuler
-        </Button>
+      <InkPicker colors={COLORS} value={form.color} onChange={(color) => setForm({ ...form, color })} />
+      <div className="flex gap-2 border-t border-rule pt-6">
         <Button type="submit" loading={pending}>
           {project ? 'Enregistrer' : 'Créer le projet'}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Annuler
         </Button>
       </div>
     </form>

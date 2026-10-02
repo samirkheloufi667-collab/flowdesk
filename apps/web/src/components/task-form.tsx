@@ -1,11 +1,53 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
-import { PRIORITY_LABEL, STATUS_LABEL, STATUS_ORDER, toInputDate } from '@/lib/format';
+import { PRIORITY_COLOR, PRIORITY_LABEL, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER, toInputDate } from '@/lib/format';
 import type { Member, Priority, Task, TaskStatus } from '@/lib/types';
-import { Button, ErrorNote, Field, Input, Select, Textarea } from './ui/primitives';
+import { Button, cx, ErrorNote, Field, Input, Select, Textarea } from './ui/primitives';
+
+const PRIORITIES: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+
+/**
+ * Choix exclusif présenté comme une ligne de mots : le trait de couleur glisse
+ * sous l'option retenue. Plus rapide qu'une liste déroulante, et lisible d'un
+ * coup d'œil.
+ */
+function WordChoice<T extends string>({
+  name,
+  legend,
+  options,
+  value,
+  label,
+  color,
+  onChange,
+}: {
+  name: string;
+  legend: string;
+  options: T[];
+  value: T;
+  label: Record<T, string>;
+  color: Record<T, string>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="mb-2 font-mono text-[11px] tracking-[0.12em] text-muted uppercase">{legend}</legend>
+      <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-rule-strong">
+        {options.map((o) => (
+          <label key={o} className={cx('relative cursor-pointer py-2 text-[15px] transition-colors', value === o ? 'text-ink' : 'text-faint hover:text-ink-2')}>
+            <input type="radio" name={name} value={o} checked={value === o} onChange={() => onChange(o)} className="sr-only" />
+            {label[o]}
+            {value === o && (
+              <motion.span layoutId={`${name}-mark`} className="absolute inset-x-0 -bottom-px h-[2px]" style={{ background: color[o] }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }} />
+            )}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 /** Création et modification d'une tâche. */
 export function TaskForm({
@@ -82,33 +124,32 @@ export function TaskForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-7">
       {error && <ErrorNote>{error}</ErrorNote>}
-      <Field label="Titre" htmlFor="t-title">
-        <Input id="t-title" required maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} autoFocus />
-      </Field>
+      <div>
+        <label htmlFor="t-title" className="sr-only">
+          Titre
+        </label>
+        <textarea
+          id="t-title"
+          required
+          maxLength={200}
+          rows={2}
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value.replace(/\n/g, ' ') })}
+          placeholder="Titre de la tâche"
+          autoFocus
+          className="w-full resize-none border-0 bg-transparent p-0 font-serif text-4xl leading-[1.05] text-ink placeholder:text-faint focus:ring-0 focus:outline-none"
+        />
+      </div>
       <Field label="Description" htmlFor="t-desc">
         <Textarea id="t-desc" maxLength={5000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Colonne" htmlFor="t-status">
-          <Select id="t-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as TaskStatus })}>
-            {STATUS_ORDER.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Priorité" htmlFor="t-priority">
-          <Select id="t-priority" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as Priority })}>
-            {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-              <option key={p} value={p}>
-                {PRIORITY_LABEL[p]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+
+      <WordChoice name="t-status" legend="Colonne" options={STATUS_ORDER} value={form.status} label={STATUS_LABEL} color={STATUS_COLOR} onChange={(status) => setForm({ ...form, status })} />
+      <WordChoice name="t-priority" legend="Priorité" options={PRIORITIES} value={form.priority} label={PRIORITY_LABEL} color={PRIORITY_COLOR} onChange={(priority) => setForm({ ...form, priority })} />
+
+      <div className="grid gap-x-8 gap-y-7 sm:grid-cols-3">
         <Field label="Responsable" htmlFor="t-assignee">
           <Select id="t-assignee" value={form.assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
             <option value="">Personne</option>
@@ -122,39 +163,36 @@ export function TaskForm({
         <Field label="Échéance" htmlFor="t-due">
           <Input id="t-due" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
         </Field>
-        <Field label="Estimation (heures)" htmlFor="t-estimate">
+        <Field label="Estimation (h)" htmlFor="t-estimate">
           <Input id="t-estimate" type="number" min={0} max={1000} value={form.estimate} onChange={(e) => setForm({ ...form, estimate: e.target.value })} />
         </Field>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-        {task && onDeleted ? (
-          confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted">Supprimer ?</span>
-              <Button type="button" variant="danger" size="sm" loading={pending} onClick={remove}>
-                Confirmer
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                Non
-              </Button>
-            </div>
-          ) : (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="size-4" /> Supprimer
-            </Button>
-          )
-        ) : (
-          <span />
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-6">
         <div className="flex gap-2">
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            Annuler
-          </Button>
           <Button type="submit" loading={pending}>
             {task ? 'Enregistrer' : 'Créer la tâche'}
           </Button>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Annuler
+          </Button>
         </div>
+        {task && onDeleted &&
+          (confirmDelete ? (
+            <div className="flex items-center gap-3">
+              <span className="font-serif text-lg italic">Vraiment ?</span>
+              <Button type="button" variant="danger" size="sm" loading={pending} onClick={remove}>
+                Supprimer
+              </Button>
+              <button type="button" className="ink-link text-sm text-muted" onClick={() => setConfirmDelete(false)}>
+                Non
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="ink-link text-sm text-late" onClick={() => setConfirmDelete(true)}>
+              Supprimer la tâche
+            </button>
+          ))}
       </div>
     </form>
   );

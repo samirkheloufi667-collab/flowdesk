@@ -1,18 +1,20 @@
 'use client';
 
-import { FolderKanban, Plus, Trash2, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
+import { Stagger } from '@/components/motion/Stagger';
 import { Modal } from '@/components/ui/modal';
-import { Avatar, Button, cx, EmptyState, ErrorNote, Field, Input, PageHeader, Spinner } from '@/components/ui/primitives';
+import { Avatar, Button, cx, EmptyState, ErrorNote, Field, InkPicker, Input, PageHeader, Spinner } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { can } from '@/lib/format';
+import { can, INK_COLORS } from '@/lib/format';
 import type { Member, Team } from '@/lib/types';
 import { useApi } from '@/lib/use-api';
 
-const COLORS = ['#7c6cff', '#3ddbc8', '#ec4899', '#f59e0b', '#0ea5e9', '#10b981'];
-
+/**
+ * Les équipes présentées comme l'ours d'un journal : le nom du pôle en grand,
+ * puis les noms de celles et ceux qui le composent.
+ */
 export default function TeamsPage() {
   const { workspace } = useAuth();
   const toast = useToast();
@@ -21,7 +23,7 @@ export default function TeamsPage() {
   const members = useApi<Member[]>(base && `${base}/members`);
 
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', color: COLORS[0] });
+  const [form, setForm] = useState({ name: '', color: INK_COLORS[0] });
   const [editingMembers, setEditingMembers] = useState<Team | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export default function TeamsPage() {
       await api(`${base}/teams`, { method: 'POST', json: form });
       toast('success', `Équipe « ${form.name} » créée`);
       setCreating(false);
-      setForm({ name: '', color: COLORS[0] });
+      setForm({ name: '', color: INK_COLORS[0] });
       void teams.reload();
     } catch (err) {
       setError(errorMessage(err));
@@ -73,138 +75,116 @@ export default function TeamsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-12">
       <PageHeader
+        index="L’ours"
         title="Équipes"
-        subtitle="Regroupez les membres par pôle et rattachez-leur des projets."
-        actions={
-          canManage && (
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="size-4" /> Nouvelle équipe
-            </Button>
-          )
-        }
+        subtitle="Les pôles de l’espace, et les personnes qui les font tourner. Rattachez-leur des projets."
+        actions={canManage && <Button onClick={() => setCreating(true)}>Nouvelle équipe</Button>}
       />
 
       {teams.error && <ErrorNote>{teams.error}</ErrorNote>}
       {teams.loading && !teams.data && <Spinner />}
-      {teams.data?.length === 0 && (
-        <EmptyState icon={<Users className="size-5" />} title="Aucune équipe" text="Créez des équipes pour organiser vos membres et vos projets." />
+      {teams.data?.length === 0 && <EmptyState title="Pas encore d’équipe." text="Créez des équipes pour organiser vos membres et vos projets." />}
+
+      {teams.data && teams.data.length > 0 && (
+        <Stagger as="ol" watch={teams.data.length} className="-mt-12">
+          {teams.data.map((team) => (
+            <li key={team.id} data-reveal className="grid gap-6 border-b border-rule py-10 lg:grid-cols-12">
+              <div className="lg:col-span-5">
+                <span aria-hidden className="block h-1 w-16" style={{ background: team.color }} />
+                <h2 className="mt-5 font-serif text-5xl leading-none sm:text-6xl">{team.name}</h2>
+                <p className="mt-4 font-mono text-[11px] tracking-[0.14em] text-muted uppercase">
+                  {team.members.length} membre{team.members.length > 1 ? 's' : ''} · {team.projectCount} projet{team.projectCount > 1 ? 's' : ''}
+                </p>
+                {canManage && (
+                  <div className="mt-5 flex gap-5 text-sm">
+                    <button
+                      type="button"
+                      className="ink-link text-ink-2"
+                      onClick={() => {
+                        setSelection(team.members.map((m) => m.id));
+                        setEditingMembers(team);
+                      }}
+                    >
+                      Composer l’équipe
+                    </button>
+                    <button type="button" className="ink-link text-late" onClick={() => remove(team)}>
+                      Supprimer
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="lg:col-span-7 lg:pt-6">
+                {team.members.length === 0 ? (
+                  <p className="font-serif text-2xl text-faint italic">Personne pour l’instant.</p>
+                ) : (
+                  <ul className="grid gap-x-8 sm:grid-cols-2">
+                    {team.members.map((m) => (
+                      <li key={m.id} className="flex items-center gap-3 border-t border-rule py-3">
+                        <Avatar name={m.name} size={30} />
+                        <span className="truncate font-serif text-xl">{m.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </li>
+          ))}
+        </Stagger>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {teams.data?.map((team) => (
-          <article key={team.id} className="flex flex-col rounded-2xl border border-line bg-surface p-5">
-            <div className="flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-xl text-sm font-semibold text-ink" style={{ background: team.color }}>
-                {team.name[0]}
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate font-semibold">{team.name}</h2>
-                <p className="flex items-center gap-1.5 text-xs text-muted">
-                  <FolderKanban className="size-3" /> {team.projectCount} projet(s)
-                </p>
-              </div>
-              {canManage && (
-                <button type="button" onClick={() => remove(team)} className="rounded-md p-1.5 text-faint hover:bg-surface-2 hover:text-danger" aria-label={`Supprimer ${team.name}`}>
-                  <Trash2 className="size-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="mt-5 flex-1">
-              {team.members.length === 0 ? (
-                <p className="text-sm text-faint">Aucun membre.</p>
-              ) : (
-                <ul className="flex flex-col gap-2.5">
-                  {team.members.map((m) => (
-                    <li key={m.id} className="flex items-center gap-2.5 text-sm">
-                      <Avatar name={m.name} size={26} />
-                      <span className="truncate">{m.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {canManage && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-5"
-                onClick={() => {
-                  setSelection(team.members.map((m) => m.id));
-                  setEditingMembers(team);
-                }}
-              >
-                <UserPlus className="size-3.5" /> Gérer les membres
-              </Button>
-            )}
-          </article>
-        ))}
-      </div>
-
       <Modal open={creating} onClose={() => setCreating(false)} title="Nouvelle équipe">
-        <form onSubmit={create} className="flex flex-col gap-4">
+        <form onSubmit={create} className="flex flex-col gap-7">
           {error && <ErrorNote>{error}</ErrorNote>}
           <Field label="Nom" htmlFor="team-name">
             <Input id="team-name" required minLength={2} maxLength={50} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
           </Field>
-          <fieldset>
-            <legend className="mb-2 text-[13px] font-medium text-muted">Couleur</legend>
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setForm({ ...form, color: c })}
-                  className={cx('size-7 rounded-full', form.color === c && 'ring-2 ring-fg ring-offset-2 ring-offset-surface')}
-                  style={{ background: c }}
-                  aria-label={`Couleur ${c}`}
-                  aria-pressed={form.color === c}
-                />
-              ))}
-            </div>
-          </fieldset>
-          <div className="flex justify-end gap-2">
+          <InkPicker colors={INK_COLORS} value={form.color} onChange={(color) => setForm({ ...form, color })} />
+          <div className="flex gap-2 border-t border-rule pt-6">
+            <Button type="submit" loading={pending}>
+              Créer l’équipe
+            </Button>
             <Button type="button" variant="ghost" onClick={() => setCreating(false)}>
               Annuler
-            </Button>
-            <Button type="submit" loading={pending}>
-              Créer
             </Button>
           </div>
         </form>
       </Modal>
 
-      <Modal open={editingMembers !== null} onClose={() => setEditingMembers(null)} title={`Membres — ${editingMembers?.name ?? ''}`}>
-        <ul className="flex flex-col gap-1">
+      <Modal open={editingMembers !== null} onClose={() => setEditingMembers(null)} title={editingMembers?.name ?? 'Équipe'}>
+        <p className="mb-4 font-mono text-[11px] tracking-[0.12em] text-muted uppercase">
+          {selection.length} sélectionné{selection.length > 1 ? 's' : ''}
+        </p>
+        <ul className="border-t border-ink">
           {members.data?.map((m) => {
             const checked = selection.includes(m.user.id);
             return (
-              <li key={m.user.id}>
-                <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2">
+              <li key={m.user.id} className="border-b border-rule">
+                <label className="group flex cursor-pointer items-center gap-4 py-3">
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() =>
-                      setSelection((s) => (checked ? s.filter((id) => id !== m.user.id) : [...s, m.user.id]))
-                    }
-                    className="size-4 accent-[var(--color-accent)]"
+                    onChange={() => setSelection((s) => (checked ? s.filter((id) => id !== m.user.id) : [...s, m.user.id]))}
+                    className="sr-only"
                   />
-                  <Avatar name={m.user.name} size={26} />
-                  <span className="text-sm">{m.user.name}</span>
+                  <span aria-hidden className={cx('flex size-5 items-center justify-center border transition-colors', checked ? 'border-accent' : 'border-ink-2')}>
+                    <span className={cx('block size-2.5 bg-accent transition-transform duration-300', checked ? 'scale-100' : 'scale-0')} />
+                  </span>
+                  <span className={cx('font-serif text-xl transition-colors', checked ? 'text-ink' : 'text-muted group-hover:text-ink-2')}>{m.user.name}</span>
+                  <span className="ml-auto truncate font-mono text-[11px] text-faint">{m.user.email}</span>
                 </label>
               </li>
             );
           })}
         </ul>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setEditingMembers(null)}>
-            Annuler
-          </Button>
+        <div className="mt-8 flex gap-2">
           <Button onClick={saveMembers} loading={pending}>
             Enregistrer
+          </Button>
+          <Button variant="ghost" onClick={() => setEditingMembers(null)}>
+            Annuler
           </Button>
         </div>
       </Modal>

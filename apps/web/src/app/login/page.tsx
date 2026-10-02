@@ -4,11 +4,17 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
-import { Button, ErrorNote, Field, Input } from '@/components/ui/primitives';
+import { Button, cx, ErrorNote, Field, Input } from '@/components/ui/primitives';
 import { errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
-const DEMO = { email: 'demo@flowdesk.dev', password: 'demo1234' };
+/** Comptes du jeu de démonstration (mot de passe commun, publié dans le README). */
+const DEMO_PASSWORD = 'demo1234';
+const DEMO_ACCOUNTS = [
+  { email: 'demo@flowdesk.dev', name: 'Léa Martin', role: 'Propriétaire', note: 'tous les droits' },
+  { email: 'sofia@flowdesk.dev', name: 'Sofia Rossi', role: 'Membre', note: 'modifie les tâches' },
+  { email: 'client@flowdesk.dev', name: 'Nadia Haddad', role: 'Lecteur', note: 'consulte seulement' },
+];
 
 function LoginForm() {
   const { login, status } = useAuth();
@@ -16,8 +22,8 @@ function LoginForm() {
   const params = useSearchParams();
   const demo = params.get('demo') === '1';
 
-  const [email, setEmail] = useState(demo ? DEMO.email : '');
-  const [password, setPassword] = useState(demo ? DEMO.password : '');
+  const [email, setEmail] = useState(demo ? DEMO_ACCOUNTS[0].email : '');
+  const [password, setPassword] = useState(demo ? DEMO_PASSWORD : '');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -39,7 +45,8 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-7">
+      <p className="font-serif text-3xl">Connexion</p>
       {error && <ErrorNote>{error}</ErrorNote>}
       <Field label="E-mail" htmlFor="email">
         <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -47,19 +54,36 @@ function LoginForm() {
       <Field label="Mot de passe" htmlFor="password">
         <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>
-      <Button type="submit" loading={pending} className="mt-1 w-full">
+      <Button type="submit" loading={pending} className="w-full">
         Se connecter
       </Button>
-      <button
-        type="button"
-        onClick={() => {
-          setEmail(DEMO.email);
-          setPassword(DEMO.password);
-        }}
-        className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
-      >
-        Remplir avec le compte de démonstration
-      </button>
+
+      <div className="mt-4">
+        <p className="border-b border-ink pb-2 font-mono text-[11px] tracking-[0.14em] text-muted uppercase">Essayer avec un compte de démonstration</p>
+        <ul>
+          {DEMO_ACCOUNTS.map((a) => {
+            const selected = email === a.email && password === DEMO_PASSWORD;
+            return (
+              <li key={a.email} className="border-b border-rule">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail(a.email);
+                    setPassword(DEMO_PASSWORD);
+                  }}
+                  className="group flex w-full items-baseline gap-4 py-3 text-left"
+                >
+                  <span className={cx('font-serif text-xl transition-transform duration-500 ease-[var(--ease-out-expo)] group-hover:translate-x-1.5', selected ? 'text-accent italic' : 'text-ink')}>
+                    {a.name}
+                  </span>
+                  <span className="ml-auto font-mono text-[11px] tracking-[0.08em] text-muted uppercase">{a.role}</span>
+                  <span className="hidden w-32 text-right text-xs text-faint sm:inline">{a.note}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </form>
   );
 }
@@ -67,13 +91,13 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <AuthShell
-      title="Bon retour"
-      subtitle="Connectez-vous à votre espace FlowDesk."
+      title="Bon retour."
+      subtitle="Votre espace vous attend là où vous l’avez laissé : tâches ouvertes, échéances, réservations."
       footer={
         <>
           Pas encore de compte ?{' '}
-          <Link href="/register" className="font-medium text-fg hover:text-accent-strong">
-            Créer un compte
+          <Link href="/register" className="ink-link text-ink">
+            Créer un espace
           </Link>
         </>
       }

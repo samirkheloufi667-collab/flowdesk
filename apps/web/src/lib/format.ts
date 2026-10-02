@@ -23,10 +23,10 @@ export const STATUS_ORDER: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DON
 
 /** Couleur de chaque colonne du Kanban, réutilisée dans les graphiques. */
 export const STATUS_COLOR: Record<TaskStatus, string> = {
-  TODO: '#8a91a6',
-  IN_PROGRESS: '#7c6cff',
-  REVIEW: '#fbbf24',
-  DONE: '#3ddbc8',
+  TODO: '#9c978b',
+  IN_PROGRESS: '#2f3bff',
+  REVIEW: '#b07a12',
+  DONE: '#2f6b46',
 };
 
 export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -44,10 +44,10 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
 };
 
 export const PRIORITY_COLOR: Record<Priority, string> = {
-  LOW: '#8a91a6',
-  MEDIUM: '#60a5fa',
-  HIGH: '#fbbf24',
-  URGENT: '#fb7185',
+  LOW: '#9c978b',
+  MEDIUM: '#6e6a60',
+  HIGH: '#b07a12',
+  URGENT: '#d4421e',
 };
 
 export const RESOURCE_TYPE_LABEL: Record<ResourceType, string> = {
@@ -93,3 +93,14 @@ export const initials = (name: string) =>
 
 /** ISO -> valeur d'un champ <input type="date">. */
 export const toInputDate = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
+
+/** Couleur du marqueur de statut d'un projet. */
+export const PROJECT_STATUS_TONE: Record<ProjectStatus, string> = {
+  PLANNED: '#6e6a60',
+  ACTIVE: '#2f3bff',
+  ON_HOLD: '#b07a12',
+  COMPLETED: '#2f6b46',
+};
+
+/** Encres d'imprimerie proposées pour les projets et les équipes : assez soutenues pour se lire sur le papier. */
+export const INK_COLORS = ['#2f3bff', '#d4421e', '#b07a12', '#2f6b46', '#7a2e8c', '#0f7b8a', '#141412', '#c2185b'];

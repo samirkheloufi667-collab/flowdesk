@@ -1,19 +1,24 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { forwardRef } from 'react';
 import { initials } from '@/lib/format';
+import { RevealText } from '../motion/RevealText';
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ');
 export { cx };
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
+/*
+ * Boutons rectangulaires, comme des étiquettes de composition. Le bouton
+ * principal est à l'encre ; au survol, une bande outremer le remplit depuis
+ * la gauche (pseudo-élément), plutôt qu'un simple changement de teinte.
+ */
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent-strong shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset]',
-  secondary: 'bg-surface-2 text-fg border border-line hover:border-line-strong hover:bg-surface-3',
-  ghost: 'text-muted hover:text-fg hover:bg-surface-2',
-  danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',
+  primary: 'bg-ink text-paper before:bg-accent hover:text-paper',
+  secondary: 'border border-ink/80 text-ink before:bg-ink hover:text-paper',
+  ghost: 'text-ink-2 before:bg-paper-3 hover:text-ink',
+  danger: 'border border-late text-late before:bg-late hover:text-paper',
 };
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -22,101 +27,86 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
+export const buttonClass = (variant: ButtonVariant = 'primary', size: 'sm' | 'md' = 'md', className?: string) =>
+  cx(
+    'group relative isolate inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap font-medium tracking-tight transition-colors duration-300',
+    "before:absolute before:inset-0 before:-z-10 before:origin-left before:scale-x-0 before:transition-transform before:duration-500 before:ease-[var(--ease-out-expo)] before:content-[''] hover:before:scale-x-100",
+    'disabled:pointer-events-none disabled:opacity-40',
+    size === 'sm' ? 'h-8 px-3 text-[13px]' : 'h-11 px-5 text-[15px]',
+    VARIANTS[variant],
+    className,
+  );
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'primary', size = 'md', loading, disabled, className, children, ...rest },
+  { variant = 'primary', size = 'md', loading, disabled, className, children, type = 'button', ...rest },
   ref,
 ) {
   return (
-    <button
-      ref={ref}
-      disabled={disabled || loading}
-      className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        size === 'sm' ? 'h-8 px-3 text-[13px]' : 'h-10 px-4 text-sm',
-        VARIANTS[variant],
-        className,
-      )}
-      {...rest}
-    >
-      {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+    <button ref={ref} type={type} disabled={disabled || loading} className={buttonClass(variant, size, className)} {...rest}>
+      {loading && <span className="size-3 animate-spin rounded-full border border-current border-t-transparent" aria-hidden />}
       {children}
     </button>
   );
 });
 
+/* Champs « soulignés » : une seule ligne d'encre, qui devient bleue au focus. */
 const fieldBase =
-  'w-full rounded-lg border border-line bg-surface px-3 text-sm text-fg placeholder:text-faint ' +
-  'transition-colors hover:border-line-strong focus:border-accent focus:outline-none';
+  'w-full border-0 border-b border-rule-strong bg-transparent px-0 text-[15px] text-ink placeholder:text-faint ' +
+  'transition-colors hover:border-ink-2 focus:border-accent focus:outline-none focus:ring-0';
 
-export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  function Input({ className, ...rest }, ref) {
-    return <input ref={ref} className={cx(fieldBase, 'h-10', className)} {...rest} />;
-  },
-);
+export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input(
+  { className, ...rest },
+  ref,
+) {
+  return <input ref={ref} className={cx(fieldBase, 'h-11', className)} {...rest} />;
+});
 
 export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
   function Textarea({ className, ...rest }, ref) {
-    return <textarea ref={ref} className={cx(fieldBase, 'min-h-24 resize-y py-2', className)} {...rest} />;
+    return <textarea ref={ref} className={cx(fieldBase, 'min-h-28 resize-y py-2 leading-relaxed', className)} {...rest} />;
   },
 );
 
-export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  function Select({ className, ...rest }, ref) {
-    return <select ref={ref} className={cx(fieldBase, 'h-10 pr-8', className)} {...rest} />;
-  },
-);
+export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(function Select(
+  { className, ...rest },
+  ref,
+) {
+  return <select ref={ref} className={cx(fieldBase, 'h-11 cursor-pointer pr-6', className)} {...rest} />;
+});
 
-export function Field({
-  label,
-  htmlFor,
-  hint,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+/** Étiquette de champ en petites capitales à chasse fixe. */
+export function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-[13px] font-medium text-muted">
+    <div className="flex flex-col gap-1">
+      <label htmlFor={htmlFor} className="font-mono text-[11px] tracking-[0.12em] text-muted uppercase">
         {label}
       </label>
       {children}
-      {hint && <p className="text-xs text-faint">{hint}</p>}
+      {hint && <p className="pt-1 text-xs text-faint">{hint}</p>}
     </div>
   );
 }
 
+/**
+ * Marqueur typographique : un losange de couleur et un mot, sans pastille de
+ * fond. Remplace les badges arrondis.
+ */
 export function Badge({ color, children, className }: { color?: string; children: React.ReactNode; className?: string }) {
   return (
-    <span
-      className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium', className)}
-      style={
-        color
-          ? { color, backgroundColor: `color-mix(in oklab, ${color} 14%, transparent)` }
-          : undefined
-      }
-    >
+    <span className={cx('inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[0.08em] uppercase', className)} style={{ color: color ?? 'var(--color-muted)' }}>
+      <span aria-hidden className="inline-block size-[6px] rotate-45" style={{ background: color ?? 'currentColor' }} />
       {children}
     </span>
   );
 }
 
+/** Initiales en italique, sur un rond de papier. Pas de dégradé. */
 export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
-  // Teinte stable dérivée du nom : chaque personne garde la même couleur partout.
-  const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
   return (
     <span
       title={name}
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-ink"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.38,
-        background: `linear-gradient(135deg, hsl(${hue} 65% 55%), hsl(${(hue + 40) % 360} 70% 45%))`,
-      }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-rule-strong bg-paper-2 font-serif text-ink-2 italic"
+      style={{ width: size, height: size, fontSize: size * 0.46 }}
     >
       {initials(name)}
     </span>
@@ -125,7 +115,7 @@ export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
 
 export function ErrorNote({ children }: { children: React.ReactNode }) {
   return (
-    <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+    <p role="alert" className="border-l-2 border-late py-1 pl-3 text-sm text-late">
       {children}
     </p>
   );
@@ -133,61 +123,95 @@ export function ErrorNote({ children }: { children: React.ReactNode }) {
 
 export function Spinner({ label = 'Chargement' }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted">
-      <Loader2 className="size-4 animate-spin" aria-hidden />
-      {label}…
+    <div className="flex items-center gap-3 py-16 font-mono text-xs tracking-[0.12em] text-muted uppercase" role="status">
+      <span className="relative h-px w-16 overflow-hidden bg-rule">
+        <span className="absolute inset-y-0 left-0 w-1/3 animate-[loader_1.1s_ease-in-out_infinite] bg-ink" />
+      </span>
+      {label}
+      <style>{'@keyframes loader{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}'}</style>
     </div>
   );
 }
 
-export function EmptyState({
-  icon,
-  title,
-  text,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-  action?: React.ReactNode;
-}) {
+/** État vide : une phrase en italique, pas d'icône dans un carré. */
+export function EmptyState({ title, text, action }: { icon?: React.ReactNode; title: string; text: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line px-6 py-14 text-center">
-      <div className="flex size-11 items-center justify-center rounded-xl bg-surface-2 text-accent-strong">{icon}</div>
-      <div>
-        <h3 className="font-semibold">{title}</h3>
-        <p className="mt-1 max-w-sm text-sm text-muted">{text}</p>
-      </div>
-      {action}
+    <div className="border-y border-rule py-14">
+      <p className="font-serif text-3xl text-ink italic">{title}</p>
+      <p className="mt-2 max-w-md text-[15px] text-muted">{text}</p>
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }
 
-/** Barre de progression horizontale, couleur au choix. */
-export function Progress({ value, color = 'var(--color-accent)' }: { value: number; color?: string }) {
+/** Filet de progression : 1 px de haut, rempli à l'encre (ou à la couleur donnée). */
+export function Progress({ value, color = 'var(--color-ink)' }: { value: number; color?: string }) {
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
-      <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${Math.min(100, value)}%`, background: color }} />
+    <div className="relative h-px w-full bg-rule" role="progressbar" aria-valuenow={Math.round(value)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="absolute inset-y-[-1px] left-0 transition-[width] duration-1000 ease-[var(--ease-out-expo)]" style={{ width: `${Math.min(100, value)}%`, background: color }} />
     </div>
   );
 }
 
+/**
+ * En-tête de page à la manière d'une rubrique : numéro de section, grand titre
+ * révélé ligne par ligne, puis un filet.
+ */
 export function PageHeader({
   title,
   subtitle,
   actions,
+  index,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   actions?: React.ReactNode;
+  index?: string;
 }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+    <header className="border-b border-ink pb-6">
+      {index && <p className="mb-4 font-mono text-[11px] tracking-[0.16em] text-muted uppercase">{index}</p>}
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+        <div className="min-w-0">
+          <RevealText as="h1" className="font-serif text-5xl leading-[0.95] tracking-[-0.01em] sm:text-6xl lg:text-7xl">
+            {title}
+          </RevealText>
+          {subtitle && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">{subtitle}</p>}
+        </div>
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>
+  );
+}
+
+/** Petit titre de section : capitales à chasse fixe et filet. */
+export function SectionLabel({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-rule pb-2">
+      <h2 className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">{children}</h2>
+      {aside && <div className="font-mono text-[11px] tracking-[0.08em] text-faint uppercase">{aside}</div>}
+    </div>
+  );
+}
+
+/** Choix d'une encre : des carrés pleins ; celui retenu pivote en losange. */
+export function InkPicker({ colors, value, onChange, legend = 'Encre' }: { colors: string[]; value: string; onChange: (c: string) => void; legend?: string }) {
+  return (
+    <fieldset>
+      <legend className="mb-3 font-mono text-[11px] tracking-[0.12em] text-muted uppercase">{legend}</legend>
+      <div className="flex flex-wrap gap-3">
+        {colors.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(c)}
+            className={cx('size-8 transition-transform duration-500 ease-[var(--ease-out-expo)] hover:-translate-y-0.5', value === c ? 'scale-75 rotate-45' : 'rotate-0')}
+            style={{ background: c }}
+            aria-label={`Encre ${c}`}
+            aria-pressed={value === c}
+          />
+        ))}
+      </div>
+    </fieldset>
   );
 }

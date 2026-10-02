@@ -162,7 +162,7 @@ export default function DashboardPage() {
                   return (
                     <li key={task.id}>
                       <Link
-                        href={`/app/projects/${task.project.id}`}
+                        href={`/app/projects/view?id=${task.project.id}`}
                         className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3.5 transition-colors hover:bg-surface-2/50"
                       >
                         <span className="size-2 shrink-0 rounded-full" style={{ background: task.project.color }} />

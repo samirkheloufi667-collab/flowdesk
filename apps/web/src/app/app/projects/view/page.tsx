@@ -2,8 +2,8 @@
 
 import { ArrowLeft, CalendarDays, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import { KanbanBoard } from '@/components/kanban';
 import { ProjectForm } from '@/components/project-form';
 import { TaskForm } from '@/components/task-form';
@@ -23,8 +23,22 @@ import {
 import type { Member, Project, Task, TaskStatus, Team } from '@/lib/types';
 import { useApi } from '@/lib/use-api';
 
+/**
+ * Page d'un projet : /app/projects/view?id=…
+ * L'identifiant est dans la requête plutôt que dans le chemin : l'interface est
+ * exportée en fichiers statiques (servis par l'API), et un chemin dynamique
+ * exigerait de connaître tous les projets au moment de la compilation.
+ */
 export default function ProjectPage() {
-  const { id } = useParams<{ id: string }>();
+  return (
+    <Suspense fallback={<Spinner />}>
+      <ProjectView />
+    </Suspense>
+  );
+}
+
+function ProjectView() {
+  const id = useSearchParams().get('id') ?? '';
   const { workspace } = useAuth();
   const router = useRouter();
   const toast = useToast();

@@ -115,7 +115,8 @@ const PROJECTS: Array<{
 ];
 
 async function main() {
-  if (process.env.NODE_ENV === 'production') {
+  // En production, seulement pour une démo publique qui se réinitialise à chaque démarrage.
+  if (process.env.NODE_ENV === 'production' && process.env.DEMO_MODE !== 'true') {
     throw new Error('Le jeu de démonstration efface la base : refusé en production.');
   }
 

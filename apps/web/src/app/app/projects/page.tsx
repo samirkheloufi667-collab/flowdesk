@@ -97,7 +97,7 @@ export default function ProjectsPage() {
         {list.map((p) => {
           const due = dueLabel(p.dueDate, p.status === 'COMPLETED');
           return (
-            <Link key={p.id} href={`/app/projects/${p.id}`} className="group block rounded-2xl">
+            <Link key={p.id} href={`/app/projects/view?id=${p.id}`} className="group block rounded-2xl">
               <SpotlightCard
                 className="!flex !h-full !flex-col !rounded-2xl !border-line !bg-surface !p-5 transition-colors group-hover:!border-line-strong"
                 spotlightColor="rgba(124, 108, 255, 0.14)"

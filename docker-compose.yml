@@ -1,7 +1,8 @@
-# Environnement complet : PostgreSQL, Redis, API NestJS et interface Next.js.
+# Environnement complet : PostgreSQL, Redis et l'application (API NestJS qui
+# sert aussi l'interface Next.js exportée).
 #   docker compose up --build
-# API  -> http://localhost:4000/api
-# Web  -> http://localhost:3000
+# Application -> http://localhost:3000   (API sous /api)
+# DEMO_MODE=true recharge les données de démonstration à chaque démarrage.
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,7 +10,6 @@ services:
       POSTGRES_USER: flowdesk
       POSTGRES_PASSWORD: flowdesk
       POSTGRES_DB: flowdesk
-    ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U flowdesk"]
@@ -18,33 +18,22 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       retries: 10
 
-  api:
-    build: { context: ., dockerfile: apps/api/Dockerfile }
+  app:
+    build: .
     environment:
       DATABASE_URL: postgresql://flowdesk:flowdesk@postgres:5432/flowdesk
       REDIS_URL: redis://redis:6379
-      JWT_ACCESS_SECRET: change-me-access
-      JWT_REFRESH_SECRET: change-me-refresh
-      WEB_ORIGIN: http://localhost:3000
-    ports: ["4000:4000"]
+      JWT_ACCESS_SECRET: change-me
+      DEMO_MODE: "true"
+    ports: ["3000:10000"]
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      # Adresse de l'API vue par le navigateur (inscrite dans le code au build).
-      args: { NEXT_PUBLIC_API_URL: "http://localhost:4000/api" }
-    ports: ["3000:3000"]
-    depends_on: [api]
 
 volumes:
   pgdata:

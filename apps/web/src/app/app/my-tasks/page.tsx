@@ -87,7 +87,7 @@ export default function MyTasksPage() {
                         <Check className="size-3 text-teal opacity-0 group-hover:opacity-100" />
                       </button>
                     )}
-                    <Link href={`/app/projects/${task.projectId}`} className="min-w-0 flex-1">
+                    <Link href={`/app/projects/view?id=${task.projectId}`} className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium hover:text-accent-strong">{task.title}</p>
                       <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted">
                         <span className="size-1.5 rounded-full" style={{ background: task.project?.color }} />

@@ -1,0 +1,70 @@
+# Déploiement des trois projets du portfolio sur Render, en une seule opération
+# (Render → New → Blueprint → ce dépôt).
+#
+# - Une base PostgreSQL gratuite, partagée : chaque projet a son propre schéma
+#   (Render n'accorde qu'une base gratuite par compte).
+# - Trois services web gratuits : chaque API sert aussi son interface, donc une
+#   seule adresse par projet.
+# - DEMO_MODE=true : les données de démonstration sont rechargées à chaque
+#   démarrage. Un service gratuit s'endort après 15 minutes sans visite et
+#   redémarre à la suivante (environ une minute d'attente).
+#
+# Remplacer samirkheloufi667-collab par le nom du compte GitHub qui héberge les dépôts.
+
+databases:
+  - name: portfolio-db
+    plan: free
+    databaseName: portfolio
+    user: portfolio
+
+services:
+  - type: web
+    name: flowdesk
+    runtime: docker
+    plan: free
+    repo: https://github.com/samirkheloufi667-collab/flowdesk
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_URL
+        fromDatabase: { name: portfolio-db, property: connectionString }
+      - key: DB_SCHEMA
+        value: flowdesk
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+
+  - type: web
+    name: fixmycity
+    runtime: docker
+    plan: free
+    repo: https://github.com/samirkheloufi667-collab/fixmycity
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_URL
+        fromDatabase: { name: portfolio-db, property: connectionString }
+      - key: DB_SCHEMA
+        value: fixmycity
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+
+  - type: web
+    name: safeshare
+    runtime: docker
+    plan: free
+    repo: https://github.com/samirkheloufi667-collab/safeshare
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_URL
+        fromDatabase: { name: portfolio-db, property: connectionString }
+      - key: DB_SCHEMA
+        value: safeshare
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"

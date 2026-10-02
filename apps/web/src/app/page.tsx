@@ -113,7 +113,7 @@ export default function LandingPage() {
       <Colophon />
 
       <footer className="mx-auto flex max-w-[1360px] flex-wrap items-baseline justify-between gap-3 px-5 py-8 font-mono text-[11px] tracking-[0.1em] text-faint uppercase sm:px-8">
-        <span>FlowDesk — projet de portfolio</span>
+        <span>© {new Date().getFullYear()} Samir Kheloufi — tous droits réservés</span>
         <span>Personnes et projets fictifs</span>
       </footer>
     </div>

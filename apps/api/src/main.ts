@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { AppModule } from './app.module';
 import { config } from './config';
 
@@ -26,7 +26,17 @@ export function configure(app: import('@nestjs/common').INestApplication) {
   // Production : l'API sert aussi l'interface exportée en fichiers statiques.
   const webDist = process.env.WEB_DIST;
   if (webDist) {
-    app.use(express.static(webDist, { maxAge: '1h' }));
+    // Les fichiers de _next/static ont une empreinte dans leur nom : on peut les
+    // garder un an. Les pages HTML, elles, doivent être revalidées à chaque visite,
+    // sinon une ancienne page en cache réclame des scripts qui n'existent plus.
+    app.use(
+      express.static(webDist, {
+        setHeaders: (res, path) => {
+          const hashed = path.includes(`${sep}_next${sep}static${sep}`);
+          res.setHeader('Cache-Control', hashed ? 'public, max-age=31536000, immutable' : 'no-cache');
+        },
+      }),
+    );
     app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
       res.status(404).sendFile(join(webDist, '404.html'));

@@ -8,11 +8,11 @@ import { cx } from '../ui/primitives';
 
 const TICKER = [
   'Sofia a déplacé « Maquettes de l’accueil » vers En revue',
-  'Karim a réservé 20 h sur « Refonte du site »',
+  'Thomas a réservé 20 h sur « Refonte du site »',
   'Hugo a terminé « Intégration du menu »',
   'Léa a créé le projet « Application mobile »',
-  'Réservation refusée : Karim serait à 42 h sur 35',
-  'Nadia (lectrice) consulte « Campagne de rentrée »',
+  'Réservation refusée : Thomas serait à 42 h sur 35',
+  'Claire (lectrice) consulte « Campagne de rentrée »',
 ];
 
 /** Bandeau défilant, comme une dépêche : l'activité d'une équipe fictive. */
@@ -79,7 +79,7 @@ export function Overbooking() {
 
         <div className="self-end lg:col-span-7">
           <div className="flex items-baseline justify-between">
-            <p className="font-serif text-3xl">Karim Benali</p>
+            <p className="font-serif text-3xl">Thomas Garnier</p>
             <p className="font-mono text-[12px] text-muted">
               <span data-hours>0</span> h / 35 h par semaine
             </p>
@@ -123,7 +123,7 @@ export function Overbooking() {
           </dl>
           <div data-refused className="mt-10 border-l-2 border-late pl-4">
             <p className="font-mono text-[11px] tracking-[0.12em] text-late uppercase">409 · Conflit</p>
-            <p className="mt-1 font-serif text-2xl leading-snug">Karim serait à 42 h sur 35 du 6 au 10 octobre. Réservation refusée.</p>
+            <p className="mt-1 font-serif text-2xl leading-snug">Thomas serait à 42 h sur 35 du 6 au 10 octobre. Réservation refusée.</p>
           </div>
           <button
             type="button"

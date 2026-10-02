@@ -13,7 +13,7 @@ const DEMO_PASSWORD = 'demo1234';
 const DEMO_ACCOUNTS = [
   { email: 'demo@flowdesk.dev', name: 'Léa Martin', role: 'Propriétaire', note: 'tous les droits' },
   { email: 'sofia@flowdesk.dev', name: 'Sofia Rossi', role: 'Membre', note: 'modifie les tâches' },
-  { email: 'client@flowdesk.dev', name: 'Nadia Haddad', role: 'Lecteur', note: 'consulte seulement' },
+  { email: 'client@flowdesk.dev', name: 'Claire Dubois', role: 'Lecteur', note: 'consulte seulement' },
 ];
 
 function LoginForm() {

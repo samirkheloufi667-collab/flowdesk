@@ -216,6 +216,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="mx-auto max-w-[1360px] px-5 pt-10 pb-24 sm:px-8 sm:pt-14">{children}</main>
 
+      <footer className="mx-auto flex max-w-[1360px] flex-wrap justify-between gap-2 border-t border-rule px-5 py-6 font-mono text-[10px] tracking-[0.12em] text-faint uppercase sm:px-8">
+        <span>© {new Date().getFullYear()} Samir Kheloufi — tous droits réservés</span>
+        <span>FlowDesk · données fictives</span>
+      </footer>
+
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Nouvel espace">

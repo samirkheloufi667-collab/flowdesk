@@ -16,10 +16,10 @@ const inDays = (n: number) => new Date(Date.now() + n * DAY);
 
 const PEOPLE: Array<{ key: string; name: string; email: string; role: Role }> = [
   { key: 'lea', name: 'Léa Martin', email: 'demo@flowdesk.dev', role: 'OWNER' },
-  { key: 'karim', name: 'Karim Benali', email: 'karim@flowdesk.dev', role: 'ADMIN' },
+  { key: 'thomas', name: 'Thomas Garnier', email: 'thomas@flowdesk.dev', role: 'ADMIN' },
   { key: 'sofia', name: 'Sofia Rossi', email: 'sofia@flowdesk.dev', role: 'MEMBER' },
   { key: 'hugo', name: 'Hugo Lefèvre', email: 'hugo@flowdesk.dev', role: 'MEMBER' },
-  { key: 'nadia', name: 'Nadia Haddad', email: 'client@flowdesk.dev', role: 'VIEWER' },
+  { key: 'claire', name: 'Claire Dubois', email: 'client@flowdesk.dev', role: 'VIEWER' },
 ];
 
 type TaskSeed = [title: string, status: TaskStatus, priority: Priority, assignee: string | null, dueIn: number | null, estimate?: number];
@@ -47,7 +47,7 @@ const PROJECTS: Array<{
       ['Maquettes du nouveau parcours d’inscription', 'DONE', 'HIGH', 'sofia', -8, 16],
       ['Système de design : tokens de couleur', 'REVIEW', 'MEDIUM', 'sofia', 3, 6],
       ['Mode sombre sur les écrans principaux', 'IN_PROGRESS', 'MEDIUM', 'hugo', 10, 12],
-      ['Tests utilisateurs avec 8 participants', 'TODO', 'HIGH', 'karim', 18, 10],
+      ['Tests utilisateurs avec 8 participants', 'TODO', 'HIGH', 'thomas', 18, 10],
       ['Animation de l’écran d’accueil', 'TODO', 'LOW', 'hugo', 30, 4],
     ],
   },
@@ -60,10 +60,10 @@ const PROJECTS: Array<{
     start: -21,
     due: 20,
     tasks: [
-      ['Spécification des webhooks signés', 'DONE', 'URGENT', 'karim', -14, 6],
-      ['Clés d’idempotence sur POST /payments', 'DONE', 'URGENT', 'karim', -5, 8],
+      ['Spécification des webhooks signés', 'DONE', 'URGENT', 'thomas', -14, 6],
+      ['Clés d’idempotence sur POST /payments', 'DONE', 'URGENT', 'thomas', -5, 8],
       ['Paiement en trois fois', 'IN_PROGRESS', 'HIGH', 'hugo', 6, 20],
-      ['Rejeu automatique des webhooks échoués', 'IN_PROGRESS', 'HIGH', 'karim', -2, 10],
+      ['Rejeu automatique des webhooks échoués', 'IN_PROGRESS', 'HIGH', 'thomas', -2, 10],
       ['Documentation publique de l’API', 'TODO', 'MEDIUM', 'sofia', 15, 6],
       ['Test de charge : 500 paiements par seconde', 'TODO', 'HIGH', null, 12, 8],
       ['Revue de sécurité externe', 'TODO', 'URGENT', null, 18, 4],
@@ -78,7 +78,7 @@ const PROJECTS: Array<{
     start: -10,
     due: 60,
     tasks: [
-      ['Entretiens avec cinq clients', 'DONE', 'MEDIUM', 'karim', -4, 6],
+      ['Entretiens avec cinq clients', 'DONE', 'MEDIUM', 'thomas', -4, 6],
       ['Choix des indicateurs affichés', 'REVIEW', 'MEDIUM', 'lea', 2, 3],
       ['Prototype interactif', 'IN_PROGRESS', 'HIGH', 'sofia', 9, 14],
       ['Export PDF des rapports', 'TODO', 'LOW', 'hugo', 40, 8],
@@ -94,9 +94,9 @@ const PROJECTS: Array<{
     start: -60,
     due: -12,
     tasks: [
-      ['Répétition de la migration sur une copie', 'DONE', 'HIGH', 'karim', -30, 6],
+      ['Répétition de la migration sur une copie', 'DONE', 'HIGH', 'thomas', -30, 6],
       ['Réplication logique vers la nouvelle instance', 'DONE', 'URGENT', 'hugo', -18, 10],
-      ['Bascule et vérifications', 'DONE', 'URGENT', 'karim', -12, 4],
+      ['Bascule et vérifications', 'DONE', 'URGENT', 'thomas', -12, 4],
     ],
   },
   {
@@ -152,9 +152,9 @@ async function main() {
   });
 
   const teamDefs = [
-    { name: 'Produit', color: '#10b981', members: ['lea', 'karim'] },
+    { name: 'Produit', color: '#10b981', members: ['lea', 'thomas'] },
     { name: 'Design', color: '#ec4899', members: ['sofia', 'hugo'] },
-    { name: 'Plateforme', color: '#6366f1', members: ['karim', 'hugo'] },
+    { name: 'Plateforme', color: '#6366f1', members: ['thomas', 'hugo'] },
   ];
   const teams: Record<string, string> = {};
   for (const def of teamDefs) {
@@ -207,7 +207,7 @@ async function main() {
   }
 
   const resourceDefs = [
-    { name: 'Karim Benali', type: 'PERSON' as const, capacity: 35, unit: 'h/sem' },
+    { name: 'Thomas Garnier', type: 'PERSON' as const, capacity: 35, unit: 'h/sem' },
     { name: 'Sofia Rossi', type: 'PERSON' as const, capacity: 35, unit: 'h/sem' },
     { name: 'Hugo Lefèvre', type: 'PERSON' as const, capacity: 28, unit: 'h/sem' },
     { name: 'Salle Atlas', type: 'ROOM' as const, capacity: 10, unit: 'créneaux/sem' },
@@ -219,10 +219,10 @@ async function main() {
     resources[def.name] = r.id;
   }
 
-  // Charges cohérentes avec la règle anti-surréservation : Karim est à 100 %.
+  // Charges cohérentes avec la règle anti-surréservation : Thomas est à 100 %.
   const allocations: Array<[resource: string, project: string, amount: number, from: number, to: number]> = [
-    ['Karim Benali', 'API de paiement v2', 25, -21, 20],
-    ['Karim Benali', 'Tableau de bord client', 10, -10, 30],
+    ['Thomas Garnier', 'API de paiement v2', 25, -21, 20],
+    ['Thomas Garnier', 'Tableau de bord client', 10, -10, 30],
     ['Sofia Rossi', "Refonte de l'application mobile", 20, -30, 45],
     ['Sofia Rossi', 'Tableau de bord client', 8, -10, 60],
     ['Hugo Lefèvre', 'API de paiement v2', 16, -21, 20],

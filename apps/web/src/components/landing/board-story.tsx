@@ -20,11 +20,11 @@ const COLUMNS: Record<TaskStatus, DemoCard[]> = {
   ],
   IN_PROGRESS: [
     { title: 'Maquettes de l’accueil', priority: 'URGENT', who: 'SR' },
-    { title: 'Audit d’accessibilité', priority: 'MEDIUM', who: 'KB' },
+    { title: 'Audit d’accessibilité', priority: 'MEDIUM', who: 'TG' },
   ],
   REVIEW: [{ title: 'Textes de la page tarifs', priority: 'HIGH', who: 'LM' }],
   DONE: [
-    { title: 'Atelier de lancement', priority: 'MEDIUM', who: 'KB' },
+    { title: 'Atelier de lancement', priority: 'MEDIUM', who: 'TG' },
     { title: 'Inventaire des contenus', priority: 'LOW', who: 'HL' },
   ],
 };

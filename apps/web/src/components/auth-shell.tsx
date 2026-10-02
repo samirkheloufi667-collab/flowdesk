@@ -69,6 +69,7 @@ export function AuthShell({
         <div className="w-full max-w-md">
           {children}
           <div className="mt-10 border-t border-rule pt-5 text-sm text-muted">{footer}</div>
+          <p className="mt-8 font-mono text-[10px] tracking-[0.12em] text-faint uppercase">© {new Date().getFullYear()} Samir Kheloufi — tous droits réservés</p>
         </div>
       </main>
     </div>

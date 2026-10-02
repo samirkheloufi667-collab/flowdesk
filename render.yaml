@@ -8,8 +8,6 @@
 # - DEMO_MODE=true : les données de démonstration sont rechargées à chaque
 #   démarrage. Un service gratuit s'endort après 15 minutes sans visite et
 #   redémarre à la suivante (environ une minute d'attente).
-#
-# Remplacer samirkheloufi667-collab par le nom du compte GitHub qui héberge les dépôts.
 
 databases:
   - name: portfolio-db
